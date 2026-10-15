@@ -1,0 +1,1011 @@
+{
+  "timestamp": "2026-10-15T10:38:48.519Z",
+  "screens": {
+    "landing": {
+      "name": "landing",
+      "path": "/",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\landing_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "WATCH PARTY\nTHE PRIVATE CINEMA",
+              "class": "flex items-baseline gap-2 group"
+            },
+            {
+              "tag": "a",
+              "text": "Motion Atelier",
+              "class": "hidden md:inline-flex text-muted hover:text-text transition-"
+            },
+            {
+              "tag": "a",
+              "text": "Will Call (Log In)",
+              "class": "hidden sm:inline-flex text-muted hover:text-text transition-"
+            },
+            {
+              "tag": "a",
+              "text": "Get Ticket",
+              "class": "py-1.5 px-3 sm:px-3.5 bg-accent text-[#0E0B09] font-semibold"
+            },
+            {
+              "tag": "a",
+              "text": "Claim Your Balcony Pass",
+              "class": "px-7 py-3.5 bg-accent hover:bg-[#FFAE38] active:bg-[#E6880C]"
+            },
+            {
+              "tag": "button",
+              "text": "Join",
+              "class": "px-4 py-2 bg-surface-3 hover:bg-surface text-text font-mono "
+            },
+            {
+              "tag": "a",
+              "text": "Enter Cinema Foyer\n→",
+              "class": "font-mono text-xs text-accent hover:underline inline-flex it"
+            },
+            {
+              "tag": "a",
+              "text": "Preview Ticket Stub\n→",
+              "class": "font-mono text-xs text-muted hover:text-text inline-flex ite"
+            },
+            {
+              "tag": "a",
+              "text": "Get Your Ticket",
+              "class": "px-8 py-3.5 bg-accent hover:bg-[#FFAE38] text-[#0E0B09] font"
+            },
+            {
+              "tag": "a",
+              "text": "Enter With Pass",
+              "class": "px-6 py-3.5 bg-surface-2 hover:bg-surface-3 text-text font-m"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h1",
+              "text": "Cinema as it was meant to be s",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-2.52px"
+            },
+            {
+              "tag": "h2",
+              "text": "Step across the velvet rope.",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            },
+            {
+              "tag": "h2",
+              "text": "The plush virtual couch.",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            },
+            {
+              "tag": "h2",
+              "text": "Clocks lock to the millisecond",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            },
+            {
+              "tag": "h2",
+              "text": "The projector shutter opens.",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            },
+            {
+              "tag": "h2",
+              "text": "Ready to take your seat?",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            }
+          ],
+          "totalInteractive": 16
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\landing_390.png",
+        "audit": {
+          "scrollWidth": 407,
+          "innerWidth": 407,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "a",
+              "text": "WATCH PARTY",
+              "width": 138,
+              "height": 28
+            }
+          ]
+        }
+      }
+    },
+    "lobby": {
+      "name": "lobby",
+      "path": "/lobby",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\lobby_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "WATCH PARTY\nTHE PRIVATE CINEMA",
+              "class": "flex items-baseline gap-2 group"
+            },
+            {
+              "tag": "a",
+              "text": "Repertory Vault",
+              "class": "hidden lg:inline-flex text-muted hover:text-text transition-"
+            },
+            {
+              "tag": "a",
+              "text": "Will Call",
+              "class": "hidden sm:inline-flex text-muted hover:text-text transition-"
+            },
+            {
+              "tag": "button",
+              "text": "✂\nOpen Private Suite",
+              "class": "py-1.5 px-3 sm:px-3.5 bg-accent hover:bg-accent/90 active:sc"
+            },
+            {
+              "tag": "button",
+              "text": "All Archived Prints",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            },
+            {
+              "tag": "button",
+              "text": "Trending in Foyers\nHOT",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            },
+            {
+              "tag": "button",
+              "text": "Criterion & 70mm\n70MM",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            },
+            {
+              "tag": "button",
+              "text": "Sci-Fi & Cyberpunk",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            },
+            {
+              "tag": "button",
+              "text": "Pulse Thrillers",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            },
+            {
+              "tag": "button",
+              "text": "Crime & Neo-Noir",
+              "class": "flex-shrink-0 px-3.5 py-1.5 rounded-sm font-mono text-xs tra"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h1",
+              "text": "The Grand Foyer",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.2px"
+            },
+            {
+              "tag": "h2",
+              "text": "Now Showing in Private Suites",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Blade Runner (Final Cut): The ",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Stalker (1979) Tarkovsky 4K Re",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Inception: 70mm IMAX Synchrono",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Matrix: 35mm Nitrate Print",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Interstellar: 70mm Sound Stage",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "Curated Repertory & Streams",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Shawshank Redemption",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Dark Knight",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Pulp Fiction",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Inception",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Fight Club",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Interstellar",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Matrix",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Goodfellas",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Spirited Away",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Silence of the Lambs",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Seven",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "City of God",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Parasite",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Whiplash",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Cinema Paradiso",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Alien",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Back to the Future",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Gladiator",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Prestige",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Lion King",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Departed",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Big Buck Bunny (YouTube CC-BY)",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Your Name",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Spider-Man: Into the Spider-Ve",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "WALL-E",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Oldboy",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Princess Mononoke",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Coco",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Memento",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Inglourious Basterds",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Big Buck Bunny",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Amélie",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Pan's Labyrinth",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Sintel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "A Trip to the Moon (Le Voyage ",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Grand Budapest Hotel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Ratatouille",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Blade Runner 2049",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Dune",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Tears of Steel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Elephants Dream",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Big Buck Bunny",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Everything Everywhere All at O",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Night of the Living Dead",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Sintel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "The Great Train Robbery",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Tears of Steel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h3",
+              "text": "Elephant's Dream",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            }
+          ],
+          "totalInteractive": 135
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\lobby_390.png",
+        "audit": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "a",
+              "text": "WATCH PARTY",
+              "width": 154,
+              "height": 28
+            },
+            {
+              "tag": "button",
+              "text": "◀",
+              "width": 28,
+              "height": 26
+            },
+            {
+              "tag": "button",
+              "text": "▶",
+              "width": 28,
+              "height": 26
+            },
+            {
+              "tag": "button",
+              "text": "All Archived Prints",
+              "width": 167,
+              "height": 30
+            },
+            {
+              "tag": "button",
+              "text": "Sci-Fi & Cyberpunk",
+              "width": 160,
+              "height": 30
+            }
+          ]
+        }
+      }
+    },
+    "room": {
+      "name": "room",
+      "path": "/room/CRITERION-70MM",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\room_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "←\nCinema Foyer",
+              "class": "text-xs font-mono text-muted hover:text-accent transition-co"
+            },
+            {
+              "tag": "button",
+              "text": "3D Chamber",
+              "class": "px-2 py-1 rounded-[2px] transition-all cursor-pointer bg-acc"
+            },
+            {
+              "tag": "button",
+              "text": "Screen Only",
+              "class": "px-2 py-1 rounded-[2px] transition-all cursor-pointer text-m"
+            },
+            {
+              "tag": "button",
+              "text": "Cinema Mode\n🗖",
+              "class": "px-2.5 sm:px-3 py-1.5 rounded-sm font-mono text-xs border tr"
+            },
+            {
+              "tag": "button",
+              "text": "AUTO",
+              "class": "px-2 py-0.5 rounded-[2px] uppercase transition-all cursor-po"
+            },
+            {
+              "tag": "button",
+              "text": "ON",
+              "class": "px-2 py-0.5 rounded-[2px] uppercase transition-all cursor-po"
+            },
+            {
+              "tag": "button",
+              "text": "OFF",
+              "class": "px-2 py-0.5 rounded-[2px] uppercase transition-all cursor-po"
+            },
+            {
+              "tag": "button",
+              "text": "🔇 Muted",
+              "class": "px-2.5 py-1 rounded-sm font-mono text-[10px] transition-all "
+            },
+            {
+              "tag": "button",
+              "text": "▶ Play",
+              "class": "p-2 px-3.5 bg-accent hover:bg-accent/90 active:scale-95 text"
+            },
+            {
+              "tag": "button",
+              "text": "🍿",
+              "class": "w-8 h-8 rounded-sm hover:bg-surface-3 active:scale-90 text-l"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [],
+          "totalInteractive": 25
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\room_390.png",
+        "audit": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "button",
+              "text": "AUTO",
+              "width": 40,
+              "height": 19
+            },
+            {
+              "tag": "button",
+              "text": "ON",
+              "width": 28,
+              "height": 19
+            },
+            {
+              "tag": "button",
+              "text": "OFF",
+              "width": 34,
+              "height": 19
+            },
+            {
+              "tag": "button",
+              "text": "Whisper & Reels Console\n◀",
+              "width": 208,
+              "height": 30
+            },
+            {
+              "tag": "button",
+              "text": "Cinema View\n✕",
+              "width": 109,
+              "height": 24
+            }
+          ]
+        }
+      }
+    },
+    "login": {
+      "name": "login",
+      "path": "/login",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\login_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "class": "font-mono text-xs text-muted hover:text-accent transition-co"
+            },
+            {
+              "tag": "button",
+              "text": "Sign Up (Get Ticket)",
+              "class": "px-4 py-1 text-xs font-mono rounded-sm transition-all text-m"
+            },
+            {
+              "tag": "button",
+              "text": "Log In (Will Call)",
+              "class": "px-4 py-1 text-xs font-mono rounded-sm transition-all bg-acc"
+            },
+            {
+              "tag": "button",
+              "text": "✂\nPunch Stub & Enter",
+              "class": "w-full py-3.5 bg-accent hover:bg-[#FFAE38] active:bg-[#E6880"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h2",
+              "text": "Auditorium Member Entry",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-0.84px"
+            }
+          ],
+          "totalInteractive": 6
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\login_390.png",
+        "audit": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "width": 175,
+              "height": 16
+            },
+            {
+              "tag": "input",
+              "text": "",
+              "width": 238,
+              "height": 20
+            }
+          ]
+        }
+      }
+    },
+    "signup": {
+      "name": "signup",
+      "path": "/signup",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\signup_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "class": "font-mono text-xs text-muted hover:text-accent transition-co"
+            },
+            {
+              "tag": "button",
+              "text": "Sign Up (Get Ticket)",
+              "class": "px-4 py-1 text-xs font-mono rounded-sm transition-all bg-acc"
+            },
+            {
+              "tag": "button",
+              "text": "Log In (Will Call)",
+              "class": "px-4 py-1 text-xs font-mono rounded-sm transition-all text-m"
+            },
+            {
+              "tag": "button",
+              "text": "✂\nGet your ticket",
+              "class": "w-full py-3.5 bg-accent hover:bg-[#FFAE38] active:bg-[#E6880"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h2",
+              "text": "Claim Your Admission Pass",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-0.84px"
+            }
+          ],
+          "totalInteractive": 7
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\signup_390.png",
+        "audit": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "width": 175,
+              "height": 16
+            },
+            {
+              "tag": "input",
+              "text": "",
+              "width": 238,
+              "height": 20
+            }
+          ]
+        }
+      }
+    },
+    "join": {
+      "name": "join",
+      "path": "/join/CRITERION-70MM",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\join_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "class": "font-mono text-xs text-muted hover:text-accent transition-co"
+            },
+            {
+              "tag": "button",
+              "text": "✂\nTEAR & JOIN",
+              "class": "w-full py-3 px-4 bg-accent hover:bg-[#FFAE38] active:bg-[#E6"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h2",
+              "text": "Room #CRITERION-70MM",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h1",
+              "text": "2001: A Space Odyssey (Roadsho",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            }
+          ],
+          "totalInteractive": 3
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\join_390.png",
+        "audit": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "a",
+              "text": "← Return to Grand Foyer",
+              "width": 175,
+              "height": 16
+            }
+          ]
+        }
+      }
+    },
+    "motion-demo": {
+      "name": "motion-demo",
+      "path": "/motion-demo",
+      "desktop": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\motion-demo_1440.png",
+        "audit": {
+          "contrastViolations": [],
+          "focusMissing": [
+            {
+              "tag": "button",
+              "text": "Force Reduced Motion",
+              "class": "px-3 py-1.5 rounded-sm font-mono text-xs font-semibold trans"
+            },
+            {
+              "tag": "button",
+              "text": "Re-Trigger (0)",
+              "class": "px-3 py-1.5 bg-accent text-bg font-semibold text-xs rounded-"
+            },
+            {
+              "tag": "button",
+              "text": "Animate A",
+              "class": "w-full py-1 bg-surface-3 hover:bg-surface text-text text-xs "
+            },
+            {
+              "tag": "button",
+              "text": "Animate B",
+              "class": "w-full py-1 bg-surface-3 hover:bg-surface text-text text-xs "
+            },
+            {
+              "tag": "button",
+              "text": "240ms • Snappy Out\ncubicBezier",
+              "class": "p-3 rounded-sm border text-left transition-all border-accent"
+            },
+            {
+              "tag": "button",
+              "text": "480ms • Cinematic InOut\ncubicB",
+              "class": "p-3 rounded-sm border text-left transition-all border-border"
+            },
+            {
+              "tag": "button",
+              "text": "480ms • Springy Mechanical\nspr",
+              "class": "p-3 rounded-sm border text-left transition-all border-border"
+            },
+            {
+              "tag": "button",
+              "text": "Tight (40ms)",
+              "class": "px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-bo"
+            },
+            {
+              "tag": "button",
+              "text": "Cinematic (80ms)",
+              "class": "px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-bo"
+            },
+            {
+              "tag": "button",
+              "text": "Spacious (120ms)",
+              "class": "px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-bo"
+            }
+          ],
+          "positiveTabIndices": [],
+          "headings": [
+            {
+              "tag": "h1",
+              "text": "Motion Architecture & R3F Canv",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "-1.26px"
+            },
+            {
+              "tag": "h2",
+              "text": "useAnime Lifecycle",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "useScope Scoped Selectors",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "Durations & Authoritative Easi",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "3D Projector Optics & Reel",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "Video Decoder Shielding",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            },
+            {
+              "tag": "h2",
+              "text": "Route Changes & View Transitio",
+              "fontFamily": "Fraunces, \"Fraunces Fallback\", \"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\", Georgia, serif",
+              "letterSpacing": "normal"
+            }
+          ],
+          "totalInteractive": 12
+        }
+      },
+      "mobile": {
+        "screenshot": "C:\\Users\\manga\\OneDrive\\Desktop\\watchparty\\qa_screenshots\\motion-demo_390.png",
+        "audit": {
+          "scrollWidth": 455,
+          "innerWidth": 455,
+          "hasHorizontalOverflow": false,
+          "smallTargets": [
+            {
+              "tag": "button",
+              "text": "Force Reduced Motion",
+              "width": 170,
+              "height": 30
+            },
+            {
+              "tag": "button",
+              "text": "Re-Trigger (0)",
+              "width": 104,
+              "height": 28
+            },
+            {
+              "tag": "button",
+              "text": "Animate A",
+              "width": 137,
+              "height": 26
+            },
+            {
+              "tag": "button",
+              "text": "Animate B",
+              "width": 137,
+              "height": 26
+            }
+          ]
+        }
+      }
+    }
+  },
+  "reducedMotionAudit": {
+    "mediaQueryMatched": true
+  },
+  "performanceAudit": {
+    "roomDesktopFps": {
+      "avgFps": 35,
+      "minFps": 20,
+      "frameCount": 120,
+      "avgDelta": 28.4
+    }
+  },
+  "syncDriftCheck": {
+    "found": true,
+    "animationName": "none",
+    "transition": "all",
+    "isolated": true
+  }
+}

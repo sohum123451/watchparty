@@ -11,22 +11,27 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
 
 export default function LandingPage() {
   const router = useRouter();
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [roomCode, setRoomCode] = useState('');
-
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomCode.trim()) return;
-    router.push(`/room/${encodeURIComponent(roomCode.trim().toUpperCase())}`);
+    const code = roomCode.trim().toUpperCase();
+    if (!code) { setJoinError('Enter a room code'); return; }
+    setJoinError(null);
+    router.push(`/room/${encodeURIComponent(code)}`);
   };
 
   const handleCreateRoom = async () => {
     if (isCreating) return;
+    setCreateError(null);
     try {
       setIsCreating(true);
       const storedName =
@@ -38,21 +43,23 @@ export default function LandingPage() {
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomName: 'Grand Auditorium',
-          hostUserName: storedName,
-          initialVideoId: 'big_buck_bunny',
-        }),
+        body: JSON.stringify({ hostUserName: storedName }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || `Server error ${res.status}`);
+      }
       const data = await res.json();
       if (data?.room?.roomCode) {
         if (data?.hostSessionToken && typeof window !== 'undefined') {
           sessionStorage.setItem('wp_token_' + data.room.roomCode, data.hostSessionToken);
         }
         router.push(`/room/${data.room.roomCode}`);
+      } else {
+        throw new Error('No room code returned');
       }
-    } catch (err) {
-      console.error('Failed to create room', err);
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create room');
     } finally {
       setIsCreating(false);
     }
@@ -86,6 +93,12 @@ export default function LandingPage() {
           </button>
         </div>
       </nav>
+      {/* Global create-room error (nav area) */}
+      {createError && (
+        <div className="mx-6 sm:mx-12 md:mx-16 -mt-3 mb-2 text-xs font-mono text-[#E4572E] bg-[#1A1512] border border-[#E4572E]/30 rounded-lg px-4 py-2">
+          {createError}
+        </div>
+      )}
 
       {/* HERO SECTION */}
       <main className="relative flex flex-col lg:flex-row items-start lg:items-center gap-12 px-6 sm:px-12 md:px-16 pt-4 md:pt-10">
@@ -117,23 +130,28 @@ export default function LandingPage() {
                 Join with a code
               </button>
             ) : (
-              <form onSubmit={handleJoin} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="ENTER CODE"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value)}
-                  autoFocus
-                  className="bg-[#1A1512] border border-[#3A2E26] rounded-full px-5 py-3.5 text-[#F3E9DC] font-mono text-base uppercase tracking-wider focus:outline-none focus:border-[#FF9F1C] w-36 sm:w-44"
-                  aria-label="Room code"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#261E19] hover:bg-[#3A2E26] text-[#F3E9DC] border border-[#3A2E26] font-mono text-sm px-4 py-3.5 rounded-full transition-colors cursor-pointer"
-                >
-                  Go
-                </button>
-              </form>
+              <div className="flex flex-col gap-1">
+                <form onSubmit={handleJoin} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="ENTER CODE"
+                    value={roomCode}
+                    onChange={(e) => { setRoomCode(e.target.value); setJoinError(null); }}
+                    autoFocus
+                    className="bg-[#1A1512] border border-[#3A2E26] rounded-full px-5 py-3.5 text-[#F3E9DC] font-mono text-base uppercase tracking-wider focus:outline-none focus:border-[#FF9F1C] w-36 sm:w-44"
+                    aria-label="Room code"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-[#261E19] hover:bg-[#3A2E26] text-[#F3E9DC] border border-[#3A2E26] font-mono text-sm px-4 py-3.5 rounded-full transition-colors cursor-pointer"
+                  >
+                    Go
+                  </button>
+                </form>
+                {joinError && (
+                  <span className="font-mono text-xs text-[#E4572E] pl-2">{joinError}</span>
+                )}
+              </div>
             )}
           </div>
         </div>

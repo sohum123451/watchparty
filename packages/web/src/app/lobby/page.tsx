@@ -6,155 +6,233 @@
  * Tokens: bg #0E0B09, surface #1A1512, surface-2 #261E19, line #3A2E26, text #F3E9DC, muted #A89B8C, amber #FF9F1C, red #E4572E, teal #2EC4B6.
  * Typography: Fraunces (display), DM Sans (UI), JetBrains Mono (codes).
  * Flat colour blocks, no gradients, no emojis.
+ *
+ * Phase 1/3: Friends and catalogue fetched from server. Empty states shown when not yet available.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-interface Friend {
-  id: string;
-  name: string;
-  avatar: string;
-  avatarBg: string;
-  avatarColor: string;
-  status: 'Watching' | 'Listening' | 'Online' | 'Offline';
-  liveDot?: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface FriendPresence {
+  userId: string;
+  displayName: string;
+  status: 'watching' | 'listening' | 'online' | 'offline';
+  roomCode?: string;
 }
 
-const FRIENDS_LIST: Friend[] = [
-  {
-    id: 'f1',
-    name: 'Priya',
-    avatar: 'P',
-    avatarBg: '#E4572E',
-    avatarColor: '#0E0B09',
-    status: 'Watching',
-    liveDot: '#2EC4B6',
-  },
-  {
-    id: 'f2',
-    name: 'Sam',
-    avatar: 'S',
-    avatarBg: '#2EC4B6',
-    avatarColor: '#0E0B09',
-    status: 'Listening',
-    liveDot: '#2EC4B6',
-  },
-  {
-    id: 'f3',
-    name: 'Meera',
-    avatar: 'M',
-    avatarBg: '#F3E9DC',
-    avatarColor: '#0E0B09',
-    status: 'Online',
-    liveDot: '#2EC4B6',
-  },
-  {
-    id: 'f4',
-    name: 'Rohan',
-    avatar: 'R',
-    avatarBg: '#5A4A3E',
-    avatarColor: '#F3E9DC',
-    status: 'Offline',
-    liveDot: '#5A4A3E',
-  },
+interface CatalogueItem {
+  id: string;
+  title: string;
+  accentColor?: string;
+  textColor?: string;
+  isFree: boolean;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const ACCENT_CYCLE = [
+  { bg: '#E4572E', text: '#0E0B09' },
+  { bg: '#2EC4B6', text: '#0E0B09' },
+  { bg: '#FF9F1C', text: '#0E0B09' },
+  { bg: '#F3E9DC', text: '#0E0B09' },
+  { bg: '#261E19', text: '#F3E9DC' },
 ];
 
-const TONIGHT_PICKS = [
-  {
-    id: 'p1',
-    title: 'Elephants Dream',
-    bg: '#1A1512',
-    color: '#F3E9DC',
-    border: '1px solid #3A2E26',
-    code: 'ELEPHANTS',
-  },
-  {
-    id: 'p2',
-    title: 'Sintel',
-    bg: '#2EC4B6',
-    color: '#0E0B09',
-    border: 'none',
-    code: 'SINTEL',
-  },
-  {
-    id: 'p3',
-    title: 'Nosferatu',
-    bg: '#F3E9DC',
-    color: '#0E0B09',
-    border: 'none',
-    code: 'NOSFERATU',
-  },
-  {
-    id: 'p4',
-    title: 'Tears of Steel',
-    bg: '#FF9F1C',
-    color: '#0E0B09',
-    border: 'none',
-    code: 'TEARS-STEEL',
-  },
-  {
-    id: 'p5',
-    title: 'A Trip to the Moon',
-    bg: '#261E19',
-    color: '#F3E9DC',
-    border: 'none',
-    code: 'MOON-1902',
-  },
-];
+function accentForIndex(i: number) {
+  return ACCENT_CYCLE[i % ACCENT_CYCLE.length];
+}
+
+function avatarInitial(name: string) {
+  return (name || '?')[0].toUpperCase();
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  watching: '#2EC4B6',
+  listening: '#2EC4B6',
+  online: '#2EC4B6',
+  offline: '#5A4A3E',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LobbyPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [friendModalOpen, setFriendModalOpen] = useState(false);
-  const [friendCode, setFriendCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinCode, setJoinCode] = useState('');
+  const [showJoinInput, setShowJoinInput] = useState(false);
 
-  const handleCreateRoom = async (name = 'Screening Suite', videoId = 'big_buck_bunny') => {
+  // Friends presence from server
+  const [friends, setFriends] = useState<FriendPresence[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(true);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
+
+  // Catalogue from server
+  const [catalogue, setCatalogue] = useState<CatalogueItem[]>([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+
+  // Add-friend modal
+  const [friendModalOpen, setFriendModalOpen] = useState(false);
+  const [friendInput, setFriendInput] = useState('');
+  const [addFriendLoading, setAddFriendLoading] = useState(false);
+  const [addFriendError, setAddFriendError] = useState<string | null>(null);
+
+  // ── Data fetching ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false;
+    setFriendsLoading(true);
+    setFriendsError(null);
+
+    fetch('/api/friends')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (!cancelled) {
+          setFriends(
+            (data.friends || []).map((f: any) => ({
+              userId: f.userId,
+              displayName: f.displayName || f.userName || 'Unknown',
+              status: f.presence?.status || 'offline',
+              roomCode: f.presence?.roomCode,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFriendsError('Could not load friends.');
+      })
+      .finally(() => { if (!cancelled) setFriendsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCatalogueLoading(true);
+    setCatalogueError(null);
+
+    fetch('/api/catalogue')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (!cancelled) {
+          setCatalogue(
+            (data.films || data.items || []).map((item: any, i: number) => ({
+              id: item.id,
+              title: item.title,
+              isFree: item.isFree ?? item.free ?? true,
+              accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
+              textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogueError('Could not load catalogue.');
+      })
+      .finally(() => { if (!cancelled) setCatalogueLoading(false); });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+
+  const handleCreateRoom = async (filmId?: string) => {
     if (isCreating) return;
+    setCreateError(null);
     try {
       setIsCreating(true);
       const storedName =
         (typeof window !== 'undefined' && localStorage.getItem('watchparty_username')) ||
         `Host-${Math.floor(100 + Math.random() * 900)}`;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('watchparty_username', storedName);
-      }
+      if (typeof window !== 'undefined') localStorage.setItem('watchparty_username', storedName);
+
+      const body: Record<string, any> = { hostUserName: storedName };
+      if (filmId) body.initialVideoId = filmId;
+
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomName: name,
-          hostUserName: storedName,
-          initialVideoId: videoId,
-        }),
+        body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || `Server error ${res.status}`);
+      }
       const data = await res.json();
       if (data?.room?.roomCode) {
         if (data?.hostSessionToken && typeof window !== 'undefined') {
           sessionStorage.setItem('wp_token_' + data.room.roomCode, data.hostSessionToken);
         }
         router.push(`/room/${data.room.roomCode}`);
+      } else {
+        throw new Error('No room code returned');
       }
-    } catch (err) {
-      console.error('Failed to create room', err);
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create room');
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleSearchOrJoin = (e: React.FormEvent) => {
+  const handleJoinWithCode = (e: React.FormEvent) => {
     e.preventDefault();
-    const query = searchQuery.trim().toUpperCase();
-    if (!query) return;
-    // Direct join if entered as a code
-    router.push(`/room/${encodeURIComponent(query)}`);
+    const code = joinCode.trim().toUpperCase();
+    if (!code) { setJoinError('Enter a code'); return; }
+    setJoinError(null);
+    router.push(`/room/${encodeURIComponent(code)}`);
   };
 
-  const filteredPicks = TONIGHT_PICKS.filter((pick) =>
-    pick.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleAddFriend = async () => {
+    const val = friendInput.trim();
+    if (!val) { setAddFriendError('Enter a username'); return; }
+    setAddFriendLoading(true);
+    setAddFriendError(null);
+    try {
+      const res = await fetch('/api/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: val }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || 'User not found');
+      }
+      const data = await res.json();
+      // Optimistically add to list
+      if (data.friend) {
+        setFriends((prev) => {
+          const exists = prev.some((f) => f.userId === data.friend.userId);
+          if (exists) return prev;
+          return [...prev, { userId: data.friend.userId, displayName: data.friend.displayName || val, status: 'offline' }];
+        });
+      }
+      setFriendModalOpen(false);
+      setFriendInput('');
+    } catch (err: any) {
+      setAddFriendError(err.message || 'Failed to add friend');
+    } finally {
+      setAddFriendLoading(false);
+    }
+  };
+
+  // ── Filtering ────────────────────────────────────────────────────────────────
+
+  const freeCatalogue = catalogue.filter((c) => c.isFree);
+  const filteredCatalogue = (searchQuery.trim()
+    ? freeCatalogue.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : freeCatalogue
+  ).slice(0, 6); // max 6 tiles
+
+  const featuredFilm = catalogue.find((c) => c.isFree) || null;
+  const stackFilms = catalogue.filter((c) => c.isFree && c !== featuredFilm).slice(0, 2);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen box-border bg-[#0E0B09] text-[#F3E9DC] font-ui pb-12">
@@ -168,15 +246,18 @@ export default function LobbyPage() {
           <span>Watch Party</span>
         </Link>
 
-        {/* Search / Join Input */}
-        <form onSubmit={handleSearchOrJoin} className="flex-1 max-w-md mx-0 sm:mx-6 flex gap-2">
+        {/* Search */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim().length >= 4) router.push(`/room/${encodeURIComponent(searchQuery.trim().toUpperCase())}`); }}
+          className="flex-1 max-w-md mx-0 sm:mx-6 flex gap-2"
+        >
           <input
             type="text"
             aria-label="Search films or enter room code"
-            placeholder="Search films or enter room code..."
+            placeholder="Search films or enter room code…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4.5 py-3 text-[#F3E9DC] text-base font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
+            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4 py-3 text-[#F3E9DC] text-base font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
           />
           {searchQuery.trim().length >= 4 && (
             <button
@@ -188,15 +269,15 @@ export default function LobbyPage() {
           )}
         </form>
 
-        {/* Create Room & User Actions */}
-        <div className="flex items-center justify-end gap-3.5 text-[15px] text-[#A89B8C]">
+        {/* Create + Avatar */}
+        <div className="flex items-center justify-end gap-3 text-[15px] text-[#A89B8C]">
           <button
             type="button"
-            onClick={() => handleCreateRoom('Cinema Suite', 'big_buck_bunny')}
+            onClick={() => handleCreateRoom()}
             disabled={isCreating}
-            className="bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-sm sm:text-base px-5 py-2.5 rounded-full transition-all cursor-pointer border-none flex-shrink-0"
+            className="bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-sm sm:text-base px-5 py-2.5 rounded-full transition-all cursor-pointer border-none flex-shrink-0 disabled:opacity-60"
           >
-            {isCreating ? 'Creating...' : '+ Create room'}
+            {isCreating ? 'Creating…' : '+ Create room'}
           </button>
           <Link
             href="/login"
@@ -208,164 +289,245 @@ export default function LobbyPage() {
         </div>
       </header>
 
+      {/* Create-room error */}
+      {createError && (
+        <div className="mx-6 sm:mx-12 md:mx-16 -mt-3 mb-4 text-xs font-mono text-[#E4572E] bg-[#1A1512] border border-[#E4572E]/30 rounded-lg px-4 py-2">
+          {createError}
+        </div>
+      )}
+
       {/* MAIN CONTAINER */}
       <div className="flex flex-col lg:flex-row gap-8 px-6 sm:px-12 md:px-16 pt-3">
-        {/* Left Column: Now Showing & Tonight's Picks */}
+        {/* Left Column */}
         <div className="flex-1 min-w-0">
-          {/* NOW SHOWING HEADER */}
+          {/* NOW SHOWING */}
           <div className="flex items-baseline gap-4">
-            <h2 className="m-0 font-display font-semibold text-3xl sm:text-[44px] text-[#F3E9DC]">
-              Now showing
-            </h2>
+            <h2 className="m-0 font-display font-semibold text-3xl sm:text-[44px] text-[#F3E9DC]">Now showing</h2>
           </div>
 
-          {/* NOW SHOWING TILES */}
-          <div className="flex flex-col md:flex-row gap-5 mt-5">
-            {/* Hero Tile: Big Buck Bunny */}
-            <div className="flex-[2] min-h-[280px] sm:h-[300px] box-border bg-[#E4572E] text-[#0E0B09] rounded-[20px] p-6 sm:p-7 flex flex-col justify-between">
-              <div className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium text-[#0E0B09]">
-                FEATURED
-              </div>
-              <div className="font-display font-semibold text-4xl sm:text-6xl md:text-[68px] leading-[0.98] tracking-[-0.02em] text-[#0E0B09] my-3">
-                Big Buck Bunny
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-base text-[#0E0B09] font-medium">Repertory Film</span>
-                <button
-                  type="button"
-                  onClick={() => handleCreateRoom('Big Buck Bunny Screening', 'big_buck_bunny')}
-                  disabled={isCreating}
-                  className="bg-[#0E0B09] text-[#F3E9DC] hover:text-[#FF9F1C] font-bold text-sm sm:text-base px-6 py-3 rounded-full transition-colors inline-block cursor-pointer border-none"
-                >
-                  Start room
-                </button>
+          {catalogueLoading ? (
+            <div className="mt-5 h-[300px] bg-[#1A1512] rounded-[20px] flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-[#FF9F1C] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : catalogueError ? (
+            <div className="mt-5 text-sm text-[#A89B8C] font-mono">{catalogueError}</div>
+          ) : catalogue.length === 0 ? (
+            <div className="mt-5 text-sm text-[#A89B8C] font-mono">No films in catalogue yet.</div>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-5 mt-5">
+              {/* Hero tile */}
+              {featuredFilm && (() => {
+                const ac = accentForIndex(0);
+                return (
+                  <div
+                    className="flex-[2] min-h-[280px] sm:h-[300px] box-border rounded-[20px] p-6 sm:p-7 flex flex-col justify-between cursor-pointer hover:brightness-105 transition-all"
+                    style={{ backgroundColor: featuredFilm.accentColor || ac.bg, color: featuredFilm.textColor || ac.text }}
+                    onClick={() => handleCreateRoom(featuredFilm.id)}
+                  >
+                    <div className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium opacity-70">FREE</div>
+                    <div>
+                      <div className="font-display font-semibold text-4xl sm:text-6xl md:text-[68px] leading-[0.98] tracking-[-0.02em] my-3">
+                        {featuredFilm.title}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-base font-medium opacity-80">Free library</span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleCreateRoom(featuredFilm.id); }}
+                          disabled={isCreating}
+                          className="bg-[#0E0B09] text-[#F3E9DC] hover:text-[#FF9F1C] font-bold text-sm sm:text-base px-6 py-3 rounded-full transition-colors inline-block cursor-pointer border-none disabled:opacity-50"
+                        >
+                          Start room
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Stack tiles */}
+              <div className="flex-1 flex flex-col gap-5">
+                {stackFilms.length === 0 && (
+                  <div className="flex-1 bg-[#261E19] rounded-[20px] p-5 flex items-center justify-center text-xs text-[#A89B8C] font-mono">
+                    More films coming soon
+                  </div>
+                )}
+                {stackFilms.map((film, i) => {
+                  const ac = accentForIndex(i + 1);
+                  return (
+                    <div
+                      key={film.id}
+                      onClick={() => handleCreateRoom(film.id)}
+                      className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5 flex flex-col justify-between min-h-[135px] cursor-pointer"
+                    >
+                      <div className="font-mono text-xs tracking-[0.12em]" style={{ color: ac.bg }}>FREE</div>
+                      <div className="mt-2 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
+                        {film.title}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          )}
 
-            {/* Right Stack: Elephants Dream & Sintel */}
-            <div className="flex-1 flex flex-col gap-5">
-              <div
-                onClick={() => handleCreateRoom('Elephants Dream Screening', 'elephants_dream')}
-                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px] cursor-pointer"
-              >
-                <div className="font-mono text-xs tracking-[0.12em] text-[#2EC4B6]">
-                  REEL
-                </div>
-                <div className="mt-2.5 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
-                  Elephants Dream
-                </div>
-              </div>
-              <div
-                onClick={() => handleCreateRoom('Sintel Screening', 'sintel')}
-                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px] cursor-pointer"
-              >
-                <div className="font-mono text-xs tracking-[0.12em] text-[#A89B8C]">
-                  REEL
-                </div>
-                <div className="mt-2.5 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
-                  Sintel
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* TONIGHT'S PICKS HEADER */}
+          {/* TONIGHT'S PICKS */}
           <div className="flex items-center gap-5 mt-10 mb-4">
-            <h2 className="m-0 font-display font-semibold text-2xl sm:text-[34px] text-[#F3E9DC]">
-              Tonight’s picks
-            </h2>
-            <span className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm px-4 py-2 rounded-full">
-              Free
-            </span>
+            <h2 className="m-0 font-display font-semibold text-2xl sm:text-[34px] text-[#F3E9DC]">Free library</h2>
+            <span className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm px-4 py-2 rounded-full">Free</span>
           </div>
 
-          {/* TONIGHT'S PICKS 5 CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4.5">
-            {filteredPicks.map((pick) => (
-              <div
-                key={pick.id}
-                onClick={() => handleCreateRoom(`${pick.title} Screening`, pick.id)}
-                style={{
-                  backgroundColor: pick.bg,
-                  color: pick.color,
-                  border: pick.border,
-                }}
-                className="h-[250px] box-border rounded-[16px] p-4.5 flex flex-col justify-end hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
-              >
-                <div className="font-display font-semibold text-xl sm:text-[28px] leading-[1.05]">
-                  {pick.title}
-                </div>
-              </div>
-            ))}
-          </div>
+          {catalogueLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-[250px] bg-[#1A1512] rounded-[16px] animate-pulse" />
+              ))}
+            </div>
+          ) : filteredCatalogue.length === 0 ? (
+            <div className="text-sm text-[#A89B8C] font-mono">
+              {searchQuery ? 'No results.' : 'No free films yet.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {filteredCatalogue.map((item, i) => {
+                const ac = accentForIndex(i);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleCreateRoom(item.id)}
+                    style={{ backgroundColor: item.accentColor || ac.bg, color: item.textColor || ac.text }}
+                    className="h-[250px] box-border rounded-[16px] p-4 flex flex-col justify-end hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
+                  >
+                    <div className="font-display font-semibold text-xl sm:text-[28px] leading-[1.05]">
+                      {item.title}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-
-        {/* RIGHT COLUMN: FRIENDS SIDEBAR (300px) */}
+        {/* RIGHT SIDEBAR: Friends */}
         <aside className="w-full lg:w-[300px] box-border self-start bg-[#1A1512] rounded-[20px] p-6 flex-shrink-0">
-          <div className="flex items-baseline justify-between">
-            <h3 className="m-0 font-display font-semibold text-2xl sm:text-[28px] text-[#F3E9DC]">
-              Friends
-            </h3>
+          <div className="flex items-baseline justify-between mb-4">
+            <h3 className="m-0 font-display font-semibold text-2xl sm:text-[28px] text-[#F3E9DC]">Friends</h3>
           </div>
 
-          {/* Friends List with strictly 1-word statuses */}
-          <div className="mt-4">
-            {FRIENDS_LIST.map((friend) => (
-              <div
-                key={friend.id}
-                className="flex items-center gap-3 py-3.5 border-t border-[#2A211B] first:border-t-0"
-              >
-                <span
-                  style={{
-                    backgroundColor: friend.avatarBg,
-                    color: friend.avatarColor,
-                  }}
-                  className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+          {/* Join with code */}
+          {showJoinInput ? (
+            <div className="mb-4">
+              <form onSubmit={handleJoinWithCode} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="ROOM CODE"
+                  value={joinCode}
+                  onChange={(e) => { setJoinCode(e.target.value); setJoinError(null); }}
+                  autoFocus
+                  className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-full px-3.5 py-2 text-xs font-mono text-[#F3E9DC] focus:outline-none focus:border-[#FF9F1C] uppercase tracking-wider"
+                />
+                <button
+                  type="submit"
+                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-2 rounded-full cursor-pointer border-none"
                 >
-                  {friend.avatar}
-                  <span
-                    style={{ backgroundColor: friend.liveDot }}
-                    className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-[#1A1512]"
-                  />
-                </span>
-                <div>
-                  <div className="font-bold text-[15px] text-[#F3E9DC]">{friend.name}</div>
-                  <div className="text-[13px] text-[#A89B8C]">{friend.status}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  Go
+                </button>
+              </form>
+              {joinError && <span className="text-xs font-mono text-[#E4572E] mt-1 block">{joinError}</span>}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowJoinInput(true)}
+              className="w-full mb-4 text-center border-[1.5px] border-[#5A4A3E] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-2.5 text-[13px] transition-colors cursor-pointer bg-transparent"
+            >
+              Join with a code
+            </button>
+          )}
 
-          {/* Add Friend Button & Modal */}
+          {/* Friends list */}
+          {friendsLoading ? (
+            <div className="py-4 flex justify-center">
+              <div className="w-6 h-6 border-2 border-[#FF9F1C] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : friendsError ? (
+            <div className="text-xs font-mono text-[#A89B8C] py-2">{friendsError}</div>
+          ) : friends.length === 0 ? (
+            <div className="text-xs font-mono text-[#A89B8C] py-2">No friends yet. Add one below.</div>
+          ) : (
+            <div>
+              {friends.map((friend, i) => {
+                const dotColor = STATUS_COLOR[friend.status] || '#5A4A3E';
+                const ac = accentForIndex(i);
+                const statusLabel = friend.status.charAt(0).toUpperCase() + friend.status.slice(1);
+                return (
+                  <div key={friend.userId} className="flex items-center gap-3 py-3.5 border-t border-[#2A211B] first:border-t-0">
+                    <span
+                      style={{ backgroundColor: ac.bg, color: ac.text }}
+                      className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    >
+                      {avatarInitial(friend.displayName)}
+                      <span
+                        style={{ backgroundColor: dotColor }}
+                        className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-[#1A1512]"
+                      />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-bold text-[15px] text-[#F3E9DC] truncate">{friend.displayName}</div>
+                      <div className="text-[13px] text-[#A89B8C]">{statusLabel}</div>
+                    </div>
+                    {friend.roomCode && (
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/room/${friend.roomCode}`)}
+                        className="ml-auto text-xs font-mono text-[#FF9F1C] underline cursor-pointer bg-transparent border-none flex-shrink-0"
+                      >
+                        Join
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add friend */}
           {!friendModalOpen ? (
             <button
               type="button"
               onClick={() => setFriendModalOpen(true)}
-              className="w-full mt-3 text-center border-[1.5px] border-[#5A4A3E] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-3 text-[15px] transition-colors cursor-pointer"
+              className="w-full mt-3 text-center border-[1.5px] border-[#5A4A3E] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-3 text-[15px] transition-colors cursor-pointer bg-transparent"
             >
               Add friend
             </button>
           ) : (
-            <div className="mt-3 flex gap-2">
-              <input
-                type="text"
-                placeholder="Username"
-                value={friendCode}
-                onChange={(e) => setFriendCode(e.target.value)}
-                autoFocus
-                className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-full px-3.5 py-2 text-xs text-[#F3E9DC] focus:outline-none focus:border-[#FF9F1C]"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setFriendModalOpen(false);
-                  setFriendCode('');
-                }}
-                className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-2 rounded-full"
-              >
-                Add
-              </button>
+            <div className="mt-3 flex flex-col gap-1.5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={friendInput}
+                  onChange={(e) => { setFriendInput(e.target.value); setAddFriendError(null); }}
+                  autoFocus
+                  className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-full px-3.5 py-2 text-xs text-[#F3E9DC] focus:outline-none focus:border-[#FF9F1C]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddFriend}
+                  disabled={addFriendLoading}
+                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-2 rounded-full cursor-pointer border-none disabled:opacity-50"
+                >
+                  {addFriendLoading ? '…' : 'Add'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFriendModalOpen(false); setFriendInput(''); setAddFriendError(null); }}
+                  className="text-[#A89B8C] text-xs cursor-pointer bg-transparent border-none"
+                >
+                  Cancel
+                </button>
+              </div>
+              {addFriendError && <span className="text-xs font-mono text-[#E4572E]">{addFriendError}</span>}
             </div>
           )}
         </aside>
