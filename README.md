@@ -9,6 +9,18 @@
 
 ---
 
+## 🚀 Live Production Deployment
+
+WatchParty is deployed to AWS Graviton2 (`t4g.small`, `ap-south-1`) with automated Let's Encrypt TLS:
+
+- **Live Web App (Free HTTPS DNS)**: **[https://3.7.195.152.sslip.io](https://3.7.195.152.sslip.io)**
+- **Backup HTTPS Mirror**: **[https://3.7.195.152.nip.io](https://3.7.195.152.nip.io)**
+- **Direct IP (HTTP)**: **[http://3.7.195.152](http://3.7.195.152)**
+- **System Health Status**: **[https://3.7.195.152.sslip.io/health](https://3.7.195.152.sslip.io/health)**
+- **System Status Dashboard**: **[https://3.7.195.152.sslip.io/status](https://3.7.195.152.sslip.io/status)**
+
+---
+
 ## Quick Start
 
 ```bash
