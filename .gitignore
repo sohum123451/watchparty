@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment & Secrets (NEVER commit secrets!)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Persistent storage & Data
+.data/
+data/
+backups/
+caddy_data/
+caddy_config/
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+terraform/terraform.tfvars
+
+# Logs & Temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing & Coverage
+coverage/
+playwright-report/
+test-results/
+.nyc_output/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local deployment scratch files
+ssm-*.json
+watchparty-deploy.tar.gz
+*.id_ed25519*
+id_ed25519*
+

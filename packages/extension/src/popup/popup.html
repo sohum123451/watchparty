@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WatchParty</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">WatchParty</span>
+          <span class="brand-subtitle">Stream Synchronizer</span>
+        </div>
+      </div>
+      <div id="connectionBadge" class="badge badge-disconnected">
+        <span class="badge-dot"></span>
+        <span id="connectionText" class="badge-text">Disconnected</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="popup-body">
+      <!-- Room Form -->
+      <div id="joinSection" class="section">
+        <div class="input-group">
+          <label for="roomInput">Room Code</label>
+          <input type="text" id="roomInput" placeholder="e.g. ALPHA-101" spellcheck="false" autocomplete="off" />
+        </div>
+
+        <div class="input-group advanced-group">
+          <button type="button" id="toggleAdvancedBtn" class="btn-text">Advanced Settings ▾</button>
+          <div id="advancedFields" class="advanced-fields hidden">
+            <label for="serverInput">WebSocket Server URL</label>
+            <input type="text" id="serverInput" value="ws://localhost:3000/ws" spellcheck="false" />
+          </div>
+        </div>
+
+        <!-- Host Toggle -->
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <span class="toggle-title">I'm the Host</span>
+            <span class="toggle-desc">Your playback controls the party</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="hostToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Action Buttons -->
+        <button id="joinBtn" class="btn btn-primary">Join Room</button>
+        <button id="leaveBtn" class="btn btn-danger hidden">Leave Room</button>
+      </div>
+
+      <!-- Sync Health Readout -->
+      <div id="syncSection" class="section status-card">
+        <div class="card-header">
+          <span class="card-title">Live Sync Health</span>
+          <span id="roleBadge" class="pill pill-member">Member</span>
+        </div>
+        <div class="grid-metrics">
+          <div class="metric-item">
+            <span class="metric-label">Room Code</span>
+            <span id="displayRoom" class="metric-val">-</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Drift</span>
+            <span id="displayDrift" class="metric-val">0 ms</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Status</span>
+            <span id="displayStatus" class="metric-val status-good">In Sync</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Active Tabs</span>
+            <span id="displayTabs" class="metric-val">1 Tab</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy Guarantee Statement -->
+      <footer class="privacy-notice">
+        <div class="privacy-icon">🔒</div>
+        <div class="privacy-content">
+          <strong>Privacy Guarantee:</strong>
+          <span>WatchParty only sends playback state and room synchronization messages. Your credentials, personal cookies, and browsing history are never accessed or transmitted.</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="../../dist/popup/popup.js"></script>
+</body>
+</html>

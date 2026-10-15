@@ -1,0 +1,17 @@
+{
+  "name": "@watchparty/extension",
+  "version": "1.0.0",
+  "description": "WatchParty Manifest V3 Browser Extension for Synchronized Co-Watching on Streaming Services",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@watchparty/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

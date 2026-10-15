@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" style="background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="exceedGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f87171" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#dc2626" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Title & Status -->
+  <text x="70" y="35" fill="#f8fafc" font-size="18" font-weight="700">Control Propagation Latency Distribution</text>
+  <text x="850" y="35" text-anchor="end" fill="#4ade80" font-size="14" font-weight="700">
+    STATUS: PASS (p95 ≤ 250ms)
+  </text>
+
+  <!-- Grid lines (horizontal) -->
+  
+    <line x1="70" y1="400" x2="850" y2="400" stroke="#334155" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="60" y="404" fill="#94a3b8" font-size="11" text-anchor="end">0</text>
+    <line x1="70" y1="315" x2="850" y2="315" stroke="#334155" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="60" y="319" fill="#94a3b8" font-size="11" text-anchor="end">70</text>
+    <line x1="70" y1="230" x2="850" y2="230" stroke="#334155" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="60" y="234" fill="#94a3b8" font-size="11" text-anchor="end">140</text>
+    <line x1="70" y1="145" x2="850" y2="145" stroke="#334155" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="60" y="149" fill="#94a3b8" font-size="11" text-anchor="end">209</text>
+    <line x1="70" y1="60" x2="850" y2="60" stroke="#334155" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="60" y="64" fill="#94a3b8" font-size="11" text-anchor="end">279</text>
+
+  <!-- Axes -->
+  <line x1="70" y1="400" x2="850" y2="400" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="70" y1="60" x2="70" y2="400" stroke="#64748b" stroke-width="1.5"/>
+
+  <!-- Axis Labels -->
+  <text x="460" y="460" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="middle">Latency (milliseconds)</text>
+  <text x="25" y="230" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="middle" transform="rotate(-90, 25, 230)">Sample Count</text>
+
+  <!-- Bars -->
+  
+    <rect x="71" y="60" width="37" height="340" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>0-15 ms: 279 samples (85.3%)</title>
+    </rect>
+    <rect x="110" y="375.6272401433692" width="37" height="24.372759856630807" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>15-30 ms: 20 samples (6.1%)</title>
+    </rect>
+    <rect x="149" y="398.78136200716847" width="37" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>30-45 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="188" y="385.3763440860215" width="37" height="14.623655913978496" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>45-60 ms: 12 samples (3.7%)</title>
+    </rect>
+    <rect x="227" y="398.78136200716847" width="37" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>60-75 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="266" y="396.3440860215054" width="37" height="3.6559139784945955" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>75-90 ms: 3 samples (0.9%)</title>
+    </rect>
+    <rect x="305" y="397.56272401433694" width="37" height="2.4372759856630637" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>90-105 ms: 2 samples (0.6%)</title>
+    </rect>
+    <rect x="344" y="398.78136200716847" width="37" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>105-120 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="383" y="397.56272401433694" width="37" height="2.4372759856630637" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>120-135 ms: 2 samples (0.6%)</title>
+    </rect>
+    <rect x="422" y="396.3440860215054" width="37" height="3.6559139784945955" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>135-150 ms: 3 samples (0.9%)</title>
+    </rect>
+    <rect x="461" y="398.78136200716847" width="37.00000000000006" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>150-165 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="500.00000000000006" y="398.78136200716847" width="36.99999999999994" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>165-180 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="539" y="400" width="37" height="0" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>180-195 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="578" y="398.78136200716847" width="37" height="1.2186379928315318" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>195-210 ms: 1 samples (0.3%)</title>
+    </rect>
+    <rect x="617" y="400" width="37" height="0" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>210-225 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="656" y="400" width="37" height="0" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>225-240 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="695" y="400" width="37" height="0" fill="url(#barGradient)" stroke="#38bdf8" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>240-255 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="734" y="400" width="37" height="0" fill="url(#exceedGradient)" stroke="#ef4444" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>255-270 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="773" y="400" width="37" height="0" fill="url(#exceedGradient)" stroke="#ef4444" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>270-285 ms: 0 samples (0%)</title>
+    </rect>
+    <rect x="812" y="400" width="37" height="0" fill="url(#exceedGradient)" stroke="#ef4444" stroke-width="1" rx="2" filter="url(#shadow)">
+      <title>285-300 ms: 0 samples (0%)</title>
+    </rect>
+
+  <!-- X-Axis Tick Marks -->
+  
+    <line x1="70" y1="400" x2="70" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="70" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">0ms</text>
+    <line x1="200" y1="400" x2="200" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="200" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">50ms</text>
+    <line x1="330" y1="400" x2="330" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="330" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">100ms</text>
+    <line x1="460" y1="400" x2="460" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="460" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">150ms</text>
+    <line x1="590" y1="400" x2="590" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="590" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">200ms</text>
+    <line x1="720" y1="400" x2="720" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="720" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">250ms</text>
+    <line x1="850" y1="400" x2="850" y2="406" stroke="#64748b" stroke-width="1.5"/>
+    <text x="850" y="420" fill="#94a3b8" font-size="11" text-anchor="middle">300ms</text>
+
+  <!-- SLA Threshold Line (250 ms) -->
+  <line x1="720" y1="50" x2="720" y2="400" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <rect x="660" y="35" width="120" height="20" fill="#7f1d1d" rx="4" stroke="#ef4444" stroke-width="1"/>
+  <text x="720" y="49" fill="#fecaca" font-size="10" font-weight="700" text-anchor="middle">SLA TARGET: 250ms</text>
+
+  <!-- Percentile Markers -->
+  <!-- p50 -->
+  <line x1="83.364" y1="60" x2="83.364" y2="400" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="83.364" y="75" fill="#c084fc" font-size="10" font-weight="700" text-anchor="middle">p50: 5.14ms</text>
+
+  <!-- p95 -->
+  <line x1="200" y1="60" x2="200" y2="400" stroke="#f59e0b" stroke-width="2"/>
+  <text x="200" y="90" fill="#fbbf24" font-size="10" font-weight="700" text-anchor="middle">p95: 50ms</text>
+
+  <!-- Summary Box -->
+  <rect x="630" y="70" width="210" height="105" fill="#1e293b" rx="6" stroke="#334155" stroke-width="1"/>
+  <text x="645" y="90" fill="#e2e8f0" font-size="11" font-weight="700">Summary Statistics (N=327)</text>
+  <text x="645" y="108" fill="#94a3b8" font-size="10">p50: <tspan fill="#f1f5f9" font-weight="600">5.14 ms</tspan> | p90: <tspan fill="#f1f5f9" font-weight="600">25.42 ms</tspan></text>
+  <text x="645" y="126" fill="#94a3b8" font-size="10">p95: <tspan fill="#f1f5f9" font-weight="600">50 ms</tspan> | p99: <tspan fill="#f1f5f9" font-weight="600">138.99 ms</tspan></text>
+  <text x="645" y="144" fill="#94a3b8" font-size="10">Mean: <tspan fill="#f1f5f9" font-weight="600">13.17 ms</tspan> | Max: <tspan fill="#f1f5f9" font-weight="600">199.18 ms</tspan></text>
+  <text x="645" y="162" fill="#94a3b8" font-size="10">Pass SLA: <tspan fill="#4ade80" font-weight="700">YES</tspan></text>
+</svg>

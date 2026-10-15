@@ -1,0 +1,27 @@
+# ==============================================================================
+# WatchParty - Terraform Variable Inputs (terraform.tfvars.example)
+# Copy this file to terraform.tfvars and customize for your friend group.
+# ==============================================================================
+
+aws_region          = "us-east-1" # Nearest region to your users (e.g. us-east-1, eu-central-1)
+project_name        = "watchparty"
+environment         = "production"
+domain_name         = "party.yourdomain.com"
+acme_email          = "admin@yourdomain.com"
+
+# Compute & Storage (~$12/month On-Demand for t4g.small Graviton2, or ~$7.50 with Savings Plan)
+instance_type       = "t4g.small"
+root_volume_size_gb = 20
+
+# Zero-open-port security (Recommended: enable_ssh = false, connect via AWS SSM)
+enable_ssh          = false
+admin_ip_cidr       = "203.0.113.45/32" # Only needed if enable_ssh = true
+
+# Cost Control & Budget Alerts
+monthly_budget_usd  = 15.00
+budget_alert_emails = [
+  "your-email@example.com"
+]
+
+# S3 Backup Retention
+backup_retention_days = 30

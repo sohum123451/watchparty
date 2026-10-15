@@ -1,0 +1,143 @@
+version: "3.8"
+
+# ==============================================================================
+# WatchParty - Production Stack with Caddy (Automatic HTTPS), Postgres & Redis
+# Designed for small, low-cost ($12-15/mo AWS t4g.small), always-on deployments
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Caddy Reverse Proxy & Automatic Let's Encrypt / ZeroSSL TLS
+  # ----------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: watchparty-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 QUIC
+    environment:
+      - DOMAIN=${DOMAIN:-watchparty.example.com}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@watchparty.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - watchparty-network
+
+  # ----------------------------------------------------------------------------
+  # 2. WatchParty Real-Time Application Server
+  # ----------------------------------------------------------------------------
+  app:
+    image: ${APP_IMAGE:-ghcr.io/yourusername/watchparty:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: watchparty-app
+    restart: unless-stopped
+    expose:
+      - "3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - BASE_URL=https://${DOMAIN:-watchparty.example.com}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-watchparty}:${POSTGRES_PASSWORD:-watchparty_secret}@postgres:5432/${POSTGRES_DB:-watchparty_db}
+      - REDIS_URL=redis://redis:6379
+      - DATA_DIR=/data
+    volumes:
+      - appdata:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - watchparty-network
+
+  # ----------------------------------------------------------------------------
+  # 3. PostgreSQL 16 - Relational Storage with Persistent Volume
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: watchparty-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-watchparty}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-watchparty_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-watchparty_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-watchparty} -d ${POSTGRES_DB:-watchparty_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - watchparty-network
+
+  # ----------------------------------------------------------------------------
+  # 4. Redis 7 - Snapshot Persistence, Distributed Locks & Pub/Sub
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: watchparty-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --save 60 1
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - watchparty-network
+
+networks:
+  watchparty-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  appdata:
+    driver: local
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local

@@ -1,0 +1,34 @@
+{
+  "name": "watchparty-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time synchronized watch party application",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace=@watchparty/shared run build && npm --workspace=@watchparty/server run build && npm --workspace=@watchparty/client run build && npm --workspace=@watchparty/extension run build",
+    "test": "npm --workspace=@watchparty/shared test && npm --workspace=@watchparty/server test && npm --workspace=@watchparty/client test && npm --workspace=@watchparty/extension test",
+    "build:shared": "npm --workspace=@watchparty/shared run build",
+    "build:server": "npm --workspace=@watchparty/server run build",
+    "build:client": "npm --workspace=@watchparty/client run build",
+    "build:extension": "npm --workspace=@watchparty/extension run build",
+    "test:shared": "npm --workspace=@watchparty/shared test",
+    "test:server": "npm --workspace=@watchparty/server test",
+    "test:client": "npm --workspace=@watchparty/client test",
+    "test:extension": "npm --workspace=@watchparty/extension test",
+    "start:server": "npm --workspace=@watchparty/server start",
+    "dev:server": "npm --workspace=@watchparty/server run dev",
+    "bench": "tsx bench/index.ts",
+    "bench:smoke": "tsx bench/index.ts --smoke",
+    "lint": "tsc --noEmit",
+    "typecheck": "npm --workspace=@watchparty/shared run build && npm --workspace=@watchparty/server run build && npm --workspace=@watchparty/client run build",
+    "test:unit": "npm --workspace=@watchparty/shared test && npm --workspace=@watchparty/client test",
+    "test:integration": "npm --workspace=@watchparty/server test",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "typescript": "^5.7.3"
+  }
+}

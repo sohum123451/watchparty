@@ -1,0 +1,56 @@
+# ==============================================================================
+# WatchParty - Production Caddy Configuration
+# Automatic HTTPS via Let's Encrypt / ZeroSSL, HTTP/2 + HTTP/3, and WebSockets
+# ==============================================================================
+
+{
+  # Global options
+  email {$ACME_EMAIL:admin@watchparty.app}
+  admin off
+}
+
+# Primary Domain (set via DOMAIN env var or fallback)
+{$DOMAIN:watchparty.example.com} {
+  # Enable modern compression algorithms
+  encode zstd gzip
+
+  # Hardened security headers
+  header {
+    # Strict Transport Security (HSTS): 2 years with subdomains and preload
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    # Prevent MIME sniffing
+    X-Content-Type-Options "nosniff"
+    # Prevent clickjacking
+    X-Frame-Options "SAMEORIGIN"
+    # Referrer policy for privacy
+    Referrer-Policy "strict-origin-when-cross-origin"
+    # Disable dangerous browser permissions
+    Permissions-Policy "camera=(), geolocation=(), payment=()"
+    # Cache control for PWA static assets vs dynamic responses
+    @static path *.js *.css *.svg *.png *.ico *.woff2
+    header @static Cache-Control "public, max-age=31536000, immutable"
+  }
+
+  # Transparent reverse proxy to Node.js application container with WebSockets support
+  reverse_proxy app:3001 {
+    # Header passing for real client IP and TLS detection
+    header_up Host {host}
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+    header_up X-Forwarded-Proto {scheme}
+
+    # Health check for seamless failover / restarts
+    health_uri /health
+    health_interval 10s
+    health_timeout 2s
+
+    # Generous buffer for large playlist / chat history payloads
+    buffer_requests false
+  }
+
+  # Access logging in structured JSON format
+  log {
+    output stdout
+    format json
+  }
+}
