@@ -3,6 +3,7 @@ export interface Movie {
   title: string;
   year: number;
   genres: string[];
+  genre?: string;
   rating: number; // e.g. 8.8 (out of 10)
   runtime: number; // Duration in minutes
   language: string; // ISO 639-1 code (e.g. "en", "es", "ja", "ko", "fr")
@@ -10,12 +11,16 @@ export interface Movie {
   director: string;
   description: string;
   posterUrl: string;
+  thumbnailUrl?: string;
   videoUrl: string; // Playable HTML5 MP4/HLS sample stream
+  playableUrl?: string;
   trendingScore: number; // Popularity ranking metric (0-100)
   isFree?: boolean; // Legally free to watch
   license?: string; // License name (e.g. "Creative Commons Attribution 3.0", "Public Domain")
   attribution?: string; // Copyright attribution / archive credit
   provider?: string; // "html5" | "youtube"
+  accentColor?: string;
+  textColor?: string;
 }
 
 export type MovieCategory =

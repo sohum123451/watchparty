@@ -1,6 +1,8 @@
 import http from "node:http";
+import postgres from "postgres";
 import {
   MOVIE_CATALOGUE,
+  FREE_FILMS,
   MovieSearchEngine,
   computeRoomRecommendations,
   WS_CLOSE_CODES,
@@ -62,6 +64,37 @@ const NODE_ID = env.NODE_ID;
 // Observability: Metrics and Structured JSON Logger
 const metricsCollector = new MetricsCollector();
 const logger = new Logger({ service: "watchparty-server", nodeId: NODE_ID });
+
+// PostgreSQL Database Connection & Fail-Fast Startup Verification
+let dbSql: postgres.Sql | undefined;
+if (env.DATABASE_URL) {
+  try {
+    dbSql = postgres(env.DATABASE_URL, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      onnotice: () => {},
+    });
+    // Verify database connectivity immediately on startup
+    await dbSql`SELECT 1`;
+    logger.info("[Startup] PostgreSQL connection verified successfully");
+  } catch (err: any) {
+    logger.error(`[Startup] FATAL: Failed to connect to database at ${env.DATABASE_URL.replace(/:[^:@]+@/, ":****@")}: ${err.message}`);
+    console.error("\n=======================================================");
+    console.error("FATAL: DATABASE CONNECTION FAILED ON STARTUP");
+    console.error("=======================================================");
+    console.error(`Database URL: ${env.DATABASE_URL.replace(/:[^:@]+@/, ":****@")}`);
+    console.error(`Error: ${err.message}`);
+    console.error("=======================================================\n");
+    process.exit(1);
+  }
+} else if (env.NODE_ENV === "production") {
+  logger.error("[Startup] FATAL: Missing required DATABASE_URL environment variable in production.");
+  console.error("\n=======================================================");
+  console.error("FATAL: MISSING DATABASE_URL IN PRODUCTION ENVIRONMENT");
+  console.error("=======================================================\n");
+  process.exit(1);
+}
 
 let redis: IRedisService | undefined;
 let redisAdapter: RedisRoomAdapter | undefined;
@@ -174,7 +207,24 @@ const server = http.createServer(async (req, res) => {
   // 3. Health & Readiness Observability Probes
   if ((url.pathname === "/health" || url.pathname === "/healthz") && (req.method === "GET" || req.method === "HEAD")) {
     metricsCollector.setActiveRooms(roomManager.getActiveRoomCount());
-    res.writeHead(200, {
+
+    let dbHealthy = true;
+    let dbStatus = "not_configured";
+    let dbError: string | undefined;
+
+    if (dbSql) {
+      try {
+        await dbSql`SELECT 1`;
+        dbStatus = "connected";
+      } catch (err: any) {
+        dbHealthy = false;
+        dbStatus = "disconnected";
+        dbError = err?.message || "Database connection error";
+      }
+    }
+
+    const statusCode = dbHealthy ? 200 : 503;
+    res.writeHead(statusCode, {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
@@ -191,9 +241,14 @@ const server = http.createServer(async (req, res) => {
 
     res.end(
       JSON.stringify({
-        status: "healthy",
+        status: dbHealthy ? "healthy" : "unhealthy",
         nodeId: NODE_ID,
         uptimeSeconds: Math.floor(process.uptime()),
+        database: {
+          status: dbStatus,
+          type: env.DATABASE_URL ? "postgresql" : "in_memory",
+          ...(dbError ? { error: dbError } : {}),
+        },
         activeRooms: roomManager.getActiveRoomCount(),
         connectedSockets: metricsCollector.getSummaryJson().connectedSockets,
         wsEndpoint: publicWs,
@@ -437,7 +492,7 @@ const server = http.createServer(async (req, res) => {
           controlMode: r.controlMode,
         };
       });
-    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ rooms }));
     return;
   }
@@ -489,22 +544,71 @@ const server = http.createServer(async (req, res) => {
   }
 
 
-  // Catalogue endpoint (free films for lobby)
+  // Catalogue endpoint (free films for lobby and source picker)
   if (url.pathname === "/api/catalogue" && req.method === "GET") {
     const isFreeOnly = url.searchParams.get("free") !== "false";
-    const films = MOVIE_CATALOGUE
-      .filter((m: any) => !isFreeOnly || m.isFree !== false)
-      .map((m: any) => ({
+    let films: any[] = [];
+
+    if (dbSql) {
+      try {
+        const rows = await dbSql`
+          SELECT * FROM films
+          ${isFreeOnly ? dbSql`WHERE is_free = true` : dbSql``}
+          ORDER BY year DESC, title ASC
+        `;
+        if (rows && rows.length > 0) {
+          films = rows.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            year: r.year,
+            runtime: r.runtime,
+            genres: Array.isArray(r.genres) ? r.genres : JSON.parse(r.genres || "[]"),
+            genre: r.genre || (Array.isArray(r.genres) ? r.genres[0] : "Classic"),
+            description: r.description,
+            isFree: Boolean(r.is_free),
+            license: r.license,
+            attribution: r.attribution,
+            poster: r.poster_url,
+            posterUrl: r.poster_url,
+            thumbnail: r.poster_url,
+            thumbnailUrl: r.poster_url,
+            playableUrl: r.video_url,
+            videoUrl: r.video_url,
+            provider: "html5",
+            accentColor: r.accent_color,
+            textColor: r.text_color,
+          }));
+        }
+      } catch (err: any) {
+        logger.warn(`[Catalogue] Database query failed, using static catalogue: ${err?.message}`);
+      }
+    }
+
+    if (films.length === 0) {
+      films = FREE_FILMS.map((m) => ({
         id: m.id,
         title: m.title,
-        isFree: m.isFree !== false,
+        year: m.year,
+        runtime: m.runtime,
+        genres: m.genres || [m.genre || "Classic"],
+        genre: m.genre || (m.genres ? m.genres[0] : "Classic"),
+        description: m.description,
+        isFree: true,
+        license: m.license || "Public Domain",
+        attribution: m.attribution || "Public Domain Archive",
+        poster: m.posterUrl,
+        posterUrl: m.posterUrl,
+        thumbnail: m.thumbnailUrl || m.posterUrl,
+        thumbnailUrl: m.thumbnailUrl || m.posterUrl,
+        playableUrl: m.videoUrl,
+        videoUrl: m.videoUrl,
+        provider: m.provider || "html5",
         accentColor: m.accentColor,
         textColor: m.textColor,
-        description: m.description,
-        runtime: m.runtime,
-        genre: m.genre,
       }));
-    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ films }));
     return;
   }

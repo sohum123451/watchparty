@@ -1,6 +1,7 @@
 import http from "node:http";
 import { FriendsService } from "../services/FriendsService.js";
 import { TokenSecurity } from "../../auth/crypto/tokens.js";
+import { defaultSecurityMiddleware } from "../../security/headers.js";
 
 function parseBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve) => {
@@ -19,13 +20,12 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 }
 
 function sendJson(res: http.ServerResponse, statusCode: number, data: any): void {
-  const origin = (res as any)._reqOrigin || "*";
+  const origin = (res as any)._reqOrigin;
   const corsHeaders: Record<string, string> = {};
-  if (origin && origin !== "*") {
+  if (origin) {
     corsHeaders["Access-Control-Allow-Origin"] = origin;
     corsHeaders["Access-Control-Allow-Credentials"] = "true";
-  } else {
-    corsHeaders["Access-Control-Allow-Origin"] = "*";
+    corsHeaders["Vary"] = "Origin";
   }
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -54,16 +54,21 @@ export async function handleFriendsRoute(
     return false;
   }
 
-  (res as any)._reqOrigin = req.headers.origin;
+  const origin = req.headers.origin;
+  const hostHeader = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+  const isAllowed = origin ? defaultSecurityMiddleware.isOriginAllowed(origin, hostHeader) : false;
+  (res as any)._reqOrigin = isAllowed ? origin : null;
 
   // Preflight
   if (req.method === "OPTIONS") {
-    const origin = req.headers.origin || "*";
     res.writeHead(204, {
-      "Access-Control-Allow-Origin": origin,
+      ...(isAllowed ? {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+      } : {}),
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      ...(origin !== "*" ? { "Access-Control-Allow-Credentials": "true" } : {}),
     });
     res.end();
     return true;

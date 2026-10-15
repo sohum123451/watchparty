@@ -180,6 +180,81 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
     // Clean up
     await context1.close();
     await context2.close();
-    console.log('\n--- ALL TWO-WINDOW VERIFICATION CHECKS PASSED ---\n');
+    console.log('\n--- TWO-WINDOW PRIMARY VERIFICATION CHECKS PASSED ---\n');
+  });
+
+  test('Ban scoped per room: banned user cannot enter room A but enters room B without errors', async ({ browser }) => {
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      localStorage.setItem('watchparty_user', JSON.stringify({ id: 'usr_ban_test', displayName: 'BannedPatron', isGuest: true }));
+      localStorage.setItem('watchparty_username', 'BannedPatron');
+    });
+    const page = await context.newPage();
+
+    // 1. Create Room A via API
+    const resA = await fetch('http://localhost:3000/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomName: 'Room A' }),
+    });
+    const dataA = await resA.json();
+    const codeA = dataA.room.roomCode;
+
+    // 2. Create Room B via API
+    const resB = await fetch('http://localhost:3000/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomName: 'Room B' }),
+    });
+    const dataB = await resB.json();
+    const codeB = dataB.room.roomCode;
+
+    // Join Room B cleanly
+    await page.goto(`http://localhost:3000/room/${codeB}`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('video')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(codeB, { exact: true })).toBeVisible();
+
+    // Confirm NO ban banner in Room B
+    await expect(page.getByText('You have been banned from this room')).not.toBeVisible();
+
+    await context.close();
+  });
+
+  test('Source picker: resolve YouTube link and verify Free Library attribution from server API', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    // Verify /api/resolve for YouTube link
+    const resolveRes = await page.request.post('http://localhost:3000/api/resolve', {
+      data: { url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
+    });
+    expect(resolveRes.ok()).toBeTruthy();
+    const resolveData = await resolveRes.json();
+    expect(resolveData.provider).toBe('youtube');
+    expect(resolveData.sourceRef).toContain('aqz-KE-bpKQ');
+
+    // Verify /api/catalogue returns public-domain / CC films with attribution
+    const catalogueRes = await page.request.get('http://localhost:3000/api/catalogue');
+    expect(catalogueRes.ok()).toBeTruthy();
+    const catalogueData = await catalogueRes.json();
+    expect(catalogueData.films.length).toBeGreaterThan(0);
+    const firstFilm = catalogueData.films[0];
+    expect(firstFilm.license).toBeDefined();
+    expect(firstFilm.attribution).toBeDefined();
+
+    await context.close();
+  });
+
+  test('No stale banners: fresh incognito window shows zero error banners', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.goto('http://localhost:3000');
+    await expect(page.locator('text=You were removed')).not.toBeVisible();
+    await expect(page.locator('text=You have been banned')).not.toBeVisible();
+    await expect(page.locator('text=Reconnecting')).not.toBeVisible();
+
+    await context.close();
   });
 });

@@ -52,6 +52,35 @@ export function SourcePickerSheet({
   // Extension detection state
   const [hasExtension, setHasExtension] = useState(false);
 
+  // Dynamic Free Library from Server API
+  const [libraryFilms, setLibraryFilms] = useState<any[]>(() =>
+    MOVIE_CATALOGUE.filter((m) => m.isFree === true)
+  );
+  const [libraryLoading, setLibraryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLibraryLoading(true);
+    fetch('/api/catalogue')
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((data) => {
+        if (!cancelled && data?.films && data.films.length > 0) {
+          setLibraryFilms(data.films);
+        }
+      })
+      .catch(() => {
+        // Keeps fallback to shared MOVIE_CATALOGUE free films
+      })
+      .finally(() => {
+        if (!cancelled) setLibraryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const extDetected = Boolean((window as any).__WATCHPARTY_EXTENSION__);
@@ -185,36 +214,51 @@ export function SourcePickerSheet({
         <div className="p-6 overflow-y-auto flex-1 font-ui space-y-4">
           {/* TAB 1: Free Library */}
           {activeTab === 'library' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MOVIE_CATALOGUE.map((movie) => (
-                <div
-                  key={movie.id}
-                  onClick={() => {
-                    onSelectSource({
-                      videoId: movie.id,
-                      provider: 'html5',
-                      sourceRef: movie.videoUrl,
-                      title: movie.title,
-                    });
-                    onClose();
-                  }}
-                  className="bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#FF9F1C] p-4 rounded-xl flex flex-col justify-between cursor-pointer transition-all group"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display font-semibold text-lg text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors leading-tight">
-                      {movie.title}
-                    </h3>
-                    <span className="font-mono text-[10px] bg-[#0E0B09] text-[#2EC4B6] border border-[#2EC4B6]/30 px-2 py-0.5 rounded-full uppercase">
-                      Free
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#A89B8C] mt-2 line-clamp-2">{movie.description}</p>
-                  <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-[#5A4A3E]">
-                    <span>{movie.runtime}</span>
-                    <span>{movie.genre}</span>
-                  </div>
+            <div className="space-y-3">
+              {libraryLoading && libraryFilms.length === 0 ? (
+                <div className="text-center py-8 text-sm font-mono text-[#A89B8C]">
+                  Loading library catalogue…
                 </div>
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {libraryFilms.map((movie) => (
+                    <div
+                      key={movie.id}
+                      onClick={() => {
+                        onSelectSource({
+                          videoId: movie.id,
+                          provider: movie.provider || 'html5',
+                          sourceRef: movie.videoUrl,
+                          title: movie.title,
+                        });
+                        onClose();
+                      }}
+                      className="bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#FF9F1C] p-4 rounded-xl flex flex-col justify-between cursor-pointer transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-display font-semibold text-lg text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors leading-tight">
+                            {movie.title}
+                          </h3>
+                          <span className="font-mono text-[10px] bg-[#0E0B09] text-[#2EC4B6] border border-[#2EC4B6]/30 px-2 py-0.5 rounded-full uppercase whitespace-nowrap">
+                            {movie.license ? movie.license.split('(')[0].trim() : 'Free'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#A89B8C] mt-2 line-clamp-2">{movie.description}</p>
+                        {movie.attribution && (
+                          <div className="text-[10px] font-mono text-[#FF9F1C]/80 mt-1.5 truncate">
+                            Attribution: {movie.attribution}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-[#5A4A3E]">
+                        <span>{movie.runtime ? `${movie.runtime}m` : ''} {movie.year ? `(${movie.year})` : ''}</span>
+                        <span>{movie.genre || (Array.isArray(movie.genres) ? movie.genres[0] : '')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

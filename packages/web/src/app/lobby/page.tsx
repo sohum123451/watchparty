@@ -35,6 +35,11 @@ interface ActiveRoom {
 interface CatalogueItem {
   id: string;
   title: string;
+  year?: number;
+  runtime?: number;
+  genre?: string;
+  license?: string;
+  attribution?: string;
   accentColor?: string;
   textColor?: string;
   isFree: boolean;
@@ -128,8 +133,9 @@ export default function LobbyPage() {
           }))
         );
       })
-      .catch(() => {
-        setFriendsError('Could not load friends.');
+      .catch((err) => {
+        console.error('[Friends Fetch Error Details]:', err);
+        setFriendsError("Can't reach server");
       })
       .finally(() => {
         setFriendsLoading(false);
@@ -151,7 +157,9 @@ export default function LobbyPage() {
           setActiveRooms(data.rooms);
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[Rooms Fetch Error Details]:', err);
+      })
       .finally(() => {
         if (!cancelled) setRoomsLoading(false);
       });
@@ -160,33 +168,40 @@ export default function LobbyPage() {
   }, []);
 
   // Fetch movie catalogue
-  useEffect(() => {
-    let cancelled = false;
+  const fetchCatalogue = useCallback(() => {
     setCatalogueLoading(true);
     setCatalogueError(null);
 
     fetch('/api/catalogue')
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
-        if (!cancelled) {
-          setCatalogue(
-            (data.films || data.items || []).map((item: any, i: number) => ({
-              id: item.id,
-              title: item.title,
-              isFree: item.isFree ?? item.free ?? true,
-              accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
-              textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
-            }))
-          );
-        }
+        setCatalogue(
+          (data.films || data.items || []).map((item: any, i: number) => ({
+            id: item.id,
+            title: item.title,
+            year: item.year,
+            runtime: item.runtime,
+            genre: item.genre,
+            license: item.license || 'Public Domain',
+            attribution: item.attribution || 'Open Access Archive',
+            isFree: item.isFree ?? item.free ?? true,
+            accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
+            textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
+          }))
+        );
       })
-      .catch(() => {
-        if (!cancelled) setCatalogueError('Could not load catalogue.');
+      .catch((err) => {
+        console.error('[Catalogue Fetch Error Details]:', err);
+        setCatalogueError("Can't reach server");
       })
-      .finally(() => { if (!cancelled) setCatalogueLoading(false); });
-
-    return () => { cancelled = true; };
+      .finally(() => {
+        setCatalogueLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    fetchCatalogue();
+  }, [fetchCatalogue]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -222,7 +237,8 @@ export default function LobbyPage() {
         throw new Error('No room code returned');
       }
     } catch (err: any) {
-      setCreateError(err.message || 'Failed to create room');
+      console.error('[Create Room Error Details]:', err);
+      setCreateError("Can't reach server");
     } finally {
       setIsCreating(false);
     }
@@ -404,8 +420,15 @@ export default function LobbyPage() {
 
       {/* Create-room error */}
       {createError && (
-        <div className="mx-6 sm:mx-12 md:mx-16 -mt-3 mb-4 text-xs font-mono text-[#E4572E] bg-[#1A1512] border border-[#E4572E]/30 rounded-lg px-4 py-2">
-          {createError}
+        <div className="mx-6 sm:mx-12 md:mx-16 -mt-3 mb-4 text-xs font-mono text-[#E4572E] bg-[#1A1512] border border-[#E4572E]/30 rounded-lg px-4 py-2 flex items-center justify-between">
+          <span>{createError}</span>
+          <button
+            type="button"
+            onClick={() => handleCreateRoom()}
+            className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer text-xs ml-3"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -471,7 +494,16 @@ export default function LobbyPage() {
               <div className="w-8 h-8 border-2 border-[#FF9F1C] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : catalogueError ? (
-            <div className="mt-5 text-sm text-[#A89B8C] font-mono">{catalogueError}</div>
+            <div className="mt-5 text-sm text-[#A89B8C] font-mono flex items-center gap-3">
+              <span>{catalogueError}</span>
+              <button
+                type="button"
+                onClick={() => fetchCatalogue()}
+                className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer text-sm"
+              >
+                Retry
+              </button>
+            </div>
           ) : catalogue.length === 0 ? (
             <div className="mt-5 text-sm text-[#A89B8C] font-mono">No films in catalogue yet.</div>
           ) : (
@@ -485,13 +517,24 @@ export default function LobbyPage() {
                     style={{ backgroundColor: featuredFilm.accentColor || ac.bg, color: featuredFilm.textColor || ac.text }}
                     onClick={() => handleCreateRoom(featuredFilm.id)}
                   >
-                    <div className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium opacity-70">FREE</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium opacity-90">
+                        {featuredFilm.license ? featuredFilm.license.split('(')[0].trim() : 'FREE'}
+                      </span>
+                      {featuredFilm.attribution && (
+                        <span className="text-[11px] font-mono opacity-70 truncate max-w-[280px]">
+                          • {featuredFilm.attribution}
+                        </span>
+                      )}
+                    </div>
                     <div>
                       <div className="font-display font-semibold text-4xl sm:text-6xl md:text-[68px] leading-[0.98] tracking-[-0.02em] my-3">
                         {featuredFilm.title}
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-base font-medium opacity-80">Free library</span>
+                        <span className="text-sm font-medium opacity-80">
+                          {featuredFilm.runtime ? `${featuredFilm.runtime}m` : 'Feature'} {featuredFilm.year ? `• ${featuredFilm.year}` : ''}
+                        </span>
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleCreateRoom(featuredFilm.id); }}
@@ -521,10 +564,22 @@ export default function LobbyPage() {
                       onClick={() => handleCreateRoom(film.id)}
                       className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5 flex flex-col justify-between min-h-[135px] cursor-pointer"
                     >
-                      <div className="font-mono text-xs tracking-[0.12em]" style={{ color: ac.bg }}>FREE</div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs tracking-[0.12em]" style={{ color: ac.bg }}>
+                          {film.license ? film.license.split('(')[0].trim() : 'FREE'}
+                        </span>
+                        {film.runtime && (
+                          <span className="text-[11px] font-mono text-[#A89B8C]">{film.runtime}m</span>
+                        )}
+                      </div>
                       <div className="mt-2 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
                         {film.title}
                       </div>
+                      {film.attribution && (
+                        <div className="text-[10px] font-mono text-[#A89B8C] truncate mt-1">
+                          {film.attribution}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -557,10 +612,18 @@ export default function LobbyPage() {
                     key={item.id}
                     onClick={() => handleCreateRoom(item.id)}
                     style={{ backgroundColor: item.accentColor || ac.bg, color: item.textColor || ac.text }}
-                    className="h-[250px] box-border rounded-[16px] p-4 flex flex-col justify-end hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
+                    className="h-[250px] box-border rounded-[16px] p-4 flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
                   >
-                    <div className="font-display font-semibold text-xl sm:text-[28px] leading-[1.05]">
-                      {item.title}
+                    <div className="font-mono text-[10px] uppercase tracking-wider opacity-80">
+                      {item.license ? item.license.split('(')[0].trim() : 'Free'}
+                    </div>
+                    <div>
+                      <div className="font-display font-semibold text-xl sm:text-[26px] leading-[1.05]">
+                        {item.title}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[11px] font-mono opacity-80">
+                        <span>{item.runtime ? `${item.runtime}m` : ''} {item.year ? `(${item.year})` : ''}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -612,7 +675,16 @@ export default function LobbyPage() {
               <div className="w-6 h-6 border-2 border-[#FF9F1C] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : friendsError ? (
-            <div className="text-xs font-mono text-[#A89B8C] py-2">{friendsError}</div>
+            <div className="text-xs font-mono text-[#A89B8C] py-2 flex items-center justify-between">
+              <span>{friendsError}</span>
+              <button
+                type="button"
+                onClick={() => refreshFriends()}
+                className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer text-xs ml-2"
+              >
+                Retry
+              </button>
+            </div>
           ) : friends.length === 0 ? (
             <div className="text-xs font-mono text-[#A89B8C] py-2">No friends yet. Add one below.</div>
           ) : (

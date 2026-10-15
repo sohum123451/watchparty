@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { seedCatalogue } from "./seedCatalogue.js";
 
 export interface Migration {
   version: string;
@@ -241,6 +242,31 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_usage_records_date ON usage_records(date);
     `,
   },
+  {
+    version: "0004_catalogue_films",
+    name: "Create films table for free public-domain and CC-licensed catalogue",
+    sql: `
+      CREATE TABLE IF NOT EXISTS films (
+        id VARCHAR(64) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        year INT NOT NULL,
+        genre VARCHAR(64) NOT NULL,
+        genres JSONB NOT NULL DEFAULT '[]'::jsonb,
+        poster_url TEXT NOT NULL,
+        video_url TEXT NOT NULL,
+        license VARCHAR(128) NOT NULL,
+        attribution TEXT NOT NULL,
+        runtime INT NOT NULL,
+        description TEXT NOT NULL,
+        is_free BOOLEAN NOT NULL DEFAULT TRUE,
+        accent_color VARCHAR(32),
+        text_color VARCHAR(32),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_films_is_free ON films(is_free);
+    `,
+  },
 ];
 
 /**
@@ -297,6 +323,9 @@ export async function runMigrations(databaseUrl?: string): Promise<{ applied: nu
     } else {
       console.log(`[Migrations] Migration run complete. Applied ${appliedCount} new migration(s).`);
     }
+
+    // Idempotently seed films catalogue
+    await seedCatalogue(sql);
 
     return { applied: appliedCount, total: MIGRATIONS.length };
   } finally {

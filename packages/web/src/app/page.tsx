@@ -61,7 +61,8 @@ export default function LandingPage() {
         throw new Error('No room code returned');
       }
     } catch (err: any) {
-      setCreateError(err.message || 'Failed to create room');
+      console.error('[Landing Create Room Error Details]:', err);
+      setCreateError("Can't reach server");
     } finally {
       setIsCreating(false);
     }
@@ -177,6 +178,18 @@ export default function LandingPage() {
               </div>
             )}
           </div>
+          {createError && (
+            <div className="flex items-center gap-2 mt-4 font-mono text-xs text-[#E4572E]">
+              <span>{createError}</span>
+              <button
+                type="button"
+                onClick={handleCreateRoom}
+                className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Asymmetric Tilted Ticket Stub Graphic */}

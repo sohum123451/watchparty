@@ -27,6 +27,7 @@ export const envSchema = z
     ENCRYPTION_KEY: z.string().min(32).default(DEFAULT_ENCRYPTION_KEY),
     ENCRYPTION_KEY_FALLBACKS: z.string().optional(),
     CORS_ORIGIN: z.string().optional(),
+    ALLOWED_ORIGINS: z.string().optional(),
 
     // Transactional Email Service
     MAILER_PROVIDER: z.enum(["console", "resend", "postmark", "smtp"]).default("console"),

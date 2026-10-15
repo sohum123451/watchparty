@@ -78,7 +78,7 @@ describe("App Security & Transport Hardening Suite", () => {
     });
 
     it("allows trusted origins with credentials and rejects untrusted origins", async () => {
-      // 1. Allowed origin (localhost:3000)
+      // 1. Allowed origin (localhost:3000 in dev)
       const allowedRes = await fetch(`http://localhost:${port}/health`, {
         headers: { Origin: "http://localhost:3000" },
       });
@@ -90,6 +90,21 @@ describe("App Security & Transport Hardening Suite", () => {
         headers: { Origin: "https://evil-attacker-site.com" },
       });
       expect(untrustedRes.headers.get("access-control-allow-origin")).toBeNull();
+      expect(untrustedRes.headers.get("access-control-allow-credentials")).toBeNull();
+
+      // 3. Random vercel.app subdomain is strictly rejected (wildcard removed)
+      const vercelWildcardRes = await fetch(`http://localhost:${port}/health`, {
+        headers: { Origin: "https://malicious-clone.vercel.app" },
+      });
+      expect(vercelWildcardRes.headers.get("access-control-allow-origin")).toBeNull();
+      expect(vercelWildcardRes.headers.get("access-control-allow-credentials")).toBeNull();
+
+      // 4. Exact origin configured in ALLOWED_ORIGINS
+      const customMiddleware = new SecurityMiddleware({
+        allowedOrigins: ["https://watchparty-nine-coral.vercel.app"],
+      });
+      expect(customMiddleware.isOriginAllowed("https://watchparty-nine-coral.vercel.app")).toBe(true);
+      expect(customMiddleware.isOriginAllowed("https://random-other.vercel.app")).toBe(false);
     });
 
     it("enforces CSRF protection on state-modifying endpoints using auth cookies", async () => {

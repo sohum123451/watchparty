@@ -1,6 +1,7 @@
 import http from "node:http";
 import { AuthService } from "../services/AuthService.js";
 import { TokenSecurity } from "../crypto/tokens.js";
+import { defaultSecurityMiddleware } from "../../security/headers.js";
 
 function parseCookies(req: http.IncomingMessage): Record<string, string> {
   const list: Record<string, string> = {};
@@ -35,13 +36,12 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 }
 
 function sendJson(res: http.ServerResponse, statusCode: number, data: any, headers: Record<string, string> = {}): void {
-  const origin = (res as any)._reqOrigin || "*";
+  const origin = (res as any)._reqOrigin;
   const corsHeaders: Record<string, string> = {};
-  if (origin && origin !== "*") {
+  if (origin) {
     corsHeaders["Access-Control-Allow-Origin"] = origin;
     corsHeaders["Access-Control-Allow-Credentials"] = "true";
-  } else {
-    corsHeaders["Access-Control-Allow-Origin"] = "*";
+    corsHeaders["Vary"] = "Origin";
   }
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -73,17 +73,23 @@ export async function handleAuthRoute(
     return false;
   }
 
-  (res as any)._reqOrigin = req.headers.origin;
+  const origin = req.headers.origin;
+  const hostHeader = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+  const isAllowed = origin ? defaultSecurityMiddleware.isOriginAllowed(origin, hostHeader) : false;
+  (res as any)._reqOrigin = isAllowed ? origin : null;
+
   const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "127.0.0.1";
   const deviceInfo = (req.headers["user-agent"] as string) || "Unknown client";
 
   if (req.method === "OPTIONS") {
-    const origin = req.headers.origin || "*";
     res.writeHead(204, {
-      "Access-Control-Allow-Origin": origin,
+      ...(isAllowed ? {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+      } : {}),
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-      ...(origin !== "*" ? { "Access-Control-Allow-Credentials": "true" } : {}),
     });
     res.end();
     return true;

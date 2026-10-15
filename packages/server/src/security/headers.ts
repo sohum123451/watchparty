@@ -14,17 +14,19 @@ export class SecurityMiddleware {
   private allowInlineScripts: boolean;
 
   constructor(options: SecurityOptions = {}) {
-    const defaultOrigins = [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-      "https://*.vercel.app",
-      ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
-    ];
+    const isDev = process.env.NODE_ENV !== "production";
+    const defaultOrigins = isDev
+      ? [
+          "http://localhost:3000",
+          "http://localhost:3001",
+          "http://127.0.0.1:3000",
+          "http://127.0.0.1:3001",
+        ]
+      : [];
 
-    const envOrigins = process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
+    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || "";
+    const envOrigins = allowedOriginsEnv
+      ? allowedOriginsEnv.split(",").map((o) => o.trim()).filter(Boolean)
       : [];
 
     if (process.env.BASE_URL) {
@@ -75,13 +77,16 @@ export class SecurityMiddleware {
       } catch {}
     }
 
-    // Dynamic DNS domains used for cloud deployments and testing (*.sslip.io, *.nip.io)
-    try {
-      const hostname = new URL(origin).hostname.toLowerCase();
-      if (hostname.endsWith(".sslip.io") || hostname.endsWith(".nip.io")) {
-        return true;
-      }
-    } catch {}
+    // If explicit ALLOWED_ORIGINS or CORS_ORIGIN is configured, do not allow arbitrary unlisted origins
+    const hasExplicitAllowedOrigins = Boolean(process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN);
+    if (!hasExplicitAllowedOrigins) {
+      try {
+        const hostname = new URL(origin).hostname.toLowerCase();
+        if (hostname.endsWith(".sslip.io") || hostname.endsWith(".nip.io")) {
+          return true;
+        }
+      } catch {}
+    }
 
     for (const pattern of this.allowedWildcardPatterns) {
       if (pattern.test(origin)) return true;
