@@ -798,14 +798,14 @@ export class Room {
 
   public updateVoiceState(
     userId: string,
-    state: { inVoice: boolean; audioMuted: boolean; videoEnabled: boolean; screenSharing?: boolean }
+    state: { inVoice?: boolean; audioMuted?: boolean; videoEnabled?: boolean; screenSharing?: boolean; isSpeaking?: boolean }
   ): ParticipantMediaState | null {
     const member = this.members.get(userId);
     if (!member) return null;
 
     const existing = this.voiceParticipants.get(userId);
 
-    if (!state.inVoice) {
+    if (state.inVoice === false) {
       if (existing) {
         auditLogger.log({
           type: "VOICE_PARTICIPANT_LEFT",
@@ -842,7 +842,7 @@ export class Room {
       audioMuted: member.isMuted ? true : Boolean(state.audioMuted),
       videoEnabled: isVideoAllowed ? Boolean(state.videoEnabled) : false,
       screenSharing: Boolean(state.screenSharing),
-      isSpeaking: false,
+      isSpeaking: state.isSpeaking !== undefined ? Boolean(state.isSpeaking) : Boolean(existing?.isSpeaking),
       joinedVoiceAt: existing?.joinedVoiceAt || Date.now(),
     };
 

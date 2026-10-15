@@ -29,17 +29,26 @@ export default function LandingPage() {
     if (isCreating) return;
     try {
       setIsCreating(true);
+      const storedName =
+        (typeof window !== 'undefined' && localStorage.getItem('watchparty_username')) ||
+        `Host-${Math.floor(100 + Math.random() * 900)}`;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('watchparty_username', storedName);
+      }
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           roomName: 'Grand Auditorium',
-          hostUserName: 'Host',
+          hostUserName: storedName,
           initialVideoId: 'big_buck_bunny',
         }),
       });
       const data = await res.json();
       if (data?.room?.roomCode) {
+        if (data?.hostSessionToken && typeof window !== 'undefined') {
+          sessionStorage.setItem('wp_token_' + data.room.roomCode, data.hostSessionToken);
+        }
         router.push(`/room/${data.room.roomCode}`);
       }
     } catch (err) {

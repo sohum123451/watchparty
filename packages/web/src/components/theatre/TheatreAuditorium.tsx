@@ -36,7 +36,8 @@ const AVATAR_PALETTE = [
   { bg: '#BC6C25', text: '#F3E9DC', nameColor: '#BC6C25' },
 ];
 
-function getMemberPalette(userId: string) {
+function getMemberPalette(userId?: string) {
+  if (!userId) return AVATAR_PALETTE[0];
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     hash = (hash << 5) - hash + userId.charCodeAt(i);
@@ -113,7 +114,6 @@ export function TheatreAuditorium({
           return;
         }
         setRoomTitle(data.roomName || `Room ${roomCode}`);
-        setRoomStatus('loading');
       } catch (err) {
         if (!cancelled) setRoomStatus('not_found');
       }
@@ -145,7 +145,16 @@ export function TheatreAuditorium({
       localStorage.setItem('watchparty_username', storedName);
     }
 
+    const sessionToken =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem('wp_token_' + roomCode) || undefined
+        : undefined;
+
+    ws.onerror = (e) => console.error('[Auditorium WS error]', e);
+    ws.onclose = (e) => console.log('[Auditorium WS close]', e.code, e.reason);
+
     ws.onopen = () => {
+      console.log('[Auditorium WS open] sending ROOM_JOIN for', roomCode, storedName);
       if (isUnmounted) return;
       // Join Room
       ws.send(
@@ -155,6 +164,8 @@ export function TheatreAuditorium({
           payload: {
             roomCode,
             userName: storedName,
+            reconnectToken: sessionToken,
+            sessionToken,
           },
         })
       );
@@ -176,6 +187,7 @@ export function TheatreAuditorium({
       if (isUnmounted) return;
       try {
         const msg = JSON.parse(event.data);
+        console.log('[Auditorium WS msg]', msg.type);
 
         switch (msg.type) {
           case 'ERROR': {
@@ -199,6 +211,9 @@ export function TheatreAuditorium({
 
           case 'ROOM_SNAPSHOT': {
             const snap = msg.payload;
+            if (snap.reconnectToken && typeof window !== 'undefined') {
+              sessionStorage.setItem('wp_token_' + roomCode, snap.reconnectToken);
+            }
             setRoomStatus('connected');
             setRoomTitle(snap.roomName);
             setSelfUserId(snap.selfUserId);
@@ -386,7 +401,7 @@ export function TheatreAuditorium({
       clearInterval(pingInterval);
       ws.close();
     };
-  }, [roomCode, roomStatus]);
+  }, [roomCode]);
 
   // Periodic drift computation
   useEffect(() => {
@@ -449,7 +464,6 @@ export function TheatreAuditorium({
   };
 
   const triggerReaction = (emoji = '🔥') => {
-    setReactionCount((prev) => prev + 1);
     const posMs = Math.round((videoRef.current?.currentTime || 0) * 1000);
     sendWs({
       type: 'REACTION_EMIT',
@@ -474,6 +488,7 @@ export function TheatreAuditorium({
       type: 'VOICE_STATE_UPDATE',
       clientSeq: nextSeq(),
       payload: {
+        inVoice: true,
         isSpeaking: nextSpeaking,
         audioMuted: false,
         videoEnabled: false,
@@ -646,12 +661,16 @@ export function TheatreAuditorium({
         {/* Left Column: Player Container & Seats Row */}
         <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-0 overflow-y-auto">
           {/* THE SCREEN: Clean cinema stage without dead gap */}
-          <div className="relative w-full aspect-video max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto">
+          <div
+            data-playing={isPlaying ? 'true' : 'false'}
+            className="relative w-full aspect-video max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto"
+          >
             {/* HTML5 Video Element */}
             <video
               ref={videoRef}
               src={videoSrc}
               playsInline
+              muted
               onTimeUpdate={() => {
                 if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
               }}
@@ -669,6 +688,7 @@ export function TheatreAuditorium({
             {/* Centered Play Button & Title Overlay */}
             {!isPlaying && (
               <div
+                data-testid="play-overlay"
                 onClick={togglePlay}
                 className="absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4.5 cursor-pointer pointer-events-auto"
               >
@@ -726,6 +746,7 @@ export function TheatreAuditorium({
 
               {/* Progress Slider Track */}
               <div
+                data-testid="scrubber-track"
                 onClick={handleSeek}
                 style={{
                   position: 'relative',
@@ -792,6 +813,8 @@ export function TheatreAuditorium({
                   return (
                     <div
                       key={member.userId}
+                      data-seat="true"
+                      data-speaking={isSpeaking ? 'true' : 'false'}
                       ref={(el) => {
                         seatRefs.current[member.userId] = el;
                       }}
@@ -832,6 +855,7 @@ export function TheatreAuditorium({
               onClick={() => triggerReaction('🔥')}
               className="flex items-center gap-2 bg-[#261E19] hover:bg-[#342821] active:scale-95 px-4 py-2.5 rounded-full text-sm text-[#F3E9DC] cursor-pointer transition-transform border-none flex-shrink-0 self-center"
               title="Click to react"
+              aria-label="Click to react"
             >
               <svg
                 aria-hidden="true"
