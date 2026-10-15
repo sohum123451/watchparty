@@ -117,38 +117,38 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
             </span>
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           </div>
-          <h2 className="font-display font-bold text-2xl text-text tracking-tight-display">
-            {mode === 'signup' ? 'Claim Your Admission Pass' : 'Auditorium Member Entry'}
+          <h2 className="font-display font-semibold text-2xl text-text">
+            {mode === 'signup' ? 'Get your ticket' : 'Sign in'}
           </h2>
-          <p className="text-xs text-muted max-w-xs mt-1">
+          <p className="text-sm text-muted mt-1">
             {mode === 'signup'
-              ? 'Receive your permanent balcony suite credentials.'
-              : 'Present your pass to unlock your reserved seats.'}
+              ? 'Claim your admission pass.'
+              : 'Enter your room.'}
           </p>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex gap-2 mt-4 p-1 bg-surface-2 rounded-sm border border-border-brass">
+          <div className="flex gap-2 mt-4 p-1 bg-surface-2 rounded-full border border-border-brass">
             <button
               type="button"
               onClick={() => { setMode('signup'); setErrorMsg(null); }}
-              className={`px-4 py-1 text-xs font-mono rounded-sm transition-all ${
+              className={`px-4 py-1 text-xs font-ui font-medium rounded-full transition-all ${
                 mode === 'signup'
-                  ? 'bg-accent text-bg font-bold shadow-projector'
+                  ? 'bg-accent text-[#0E0B09] font-bold shadow-none'
                   : 'text-muted hover:text-text'
               }`}
             >
-              Sign Up (Get Ticket)
+              Sign up
             </button>
             <button
               type="button"
               onClick={() => { setMode('login'); setErrorMsg(null); }}
-              className={`px-4 py-1 text-xs font-mono rounded-sm transition-all ${
+              className={`px-4 py-1 text-xs font-ui font-medium rounded-full transition-all ${
                 mode === 'login'
-                  ? 'bg-accent text-bg font-bold shadow-projector'
+                  ? 'bg-accent text-[#0E0B09] font-bold shadow-none'
                   : 'text-muted hover:text-text'
               }`}
             >
-              Log In (Will Call)
+              Sign in
             </button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
           {mode === 'signup' && (
             <div>
               <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
-                Patron / Seat Holder Name
+                Name
               </label>
               <input
                 type="text"
@@ -185,9 +185,8 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
 
           {/* EMAIL FIELD AS AN AUTHENTIC TICKET STUB */}
           <div ref={emailStubRef} className="relative">
-            <label className="block text-xs font-mono text-accent uppercase tracking-wider mb-1.5 flex justify-between">
-              <span>Admission Ticket Stub &bull; Email</span>
-              <span className="text-muted-dark font-normal">SEC-A</span>
+            <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
+              Email
             </label>
 
             {/* The Ticket Stub Container */}
@@ -211,9 +210,6 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent border-none text-text text-sm font-sans placeholder-muted-dark focus:outline-none"
                 />
-                <span className="font-mono text-[9px] text-muted-dark mt-0.5">
-                  PRINTED VIA CRYPTOGRAPHIC GATE &bull; VERIFIED FOYER
-                </span>
               </div>
             </div>
           </div>
@@ -221,7 +217,7 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
           {/* PASSWORD FIELD WITH FILM-STRIP METER */}
           <div ref={passwordGroupRef}>
             <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
-              Secret Passphrase / Shutter Key
+              Password
             </label>
             <input
               type="password"
@@ -260,18 +256,12 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
               <FilmReelSpinner size="sm" />
             ) : (
               <>
-                <span>✂</span>
-                <span>{mode === 'signup' ? 'Get your ticket' : 'Punch Stub & Enter'}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                <span>{mode === 'signup' ? 'Get your ticket' : 'Enter'}</span>
               </>
             )}
           </button>
 
-          {/* Privacy Guarantee Footer Note */}
-          <div className="pt-2 border-t border-border-subtle text-center">
-            <span className="font-mono text-[10px] text-muted-dark">
-              THE PRIVATE CINEMA &bull; ZERO TRACKERS &bull; E2EE BALCONY VAULT
-            </span>
-          </div>
         </form>
       </div>
     </div>

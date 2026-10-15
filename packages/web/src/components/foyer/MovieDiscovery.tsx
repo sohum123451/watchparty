@@ -216,7 +216,7 @@ export function MovieDiscovery({
         {/* FUZZY SEARCH INPUT */}
         <div className="relative w-full md:w-80">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
-            <span className="text-sm">🔍</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
           <input
             type="text"
@@ -373,7 +373,7 @@ export function MovieDiscovery({
                     onClick={() => onSelectMovieForSuite?.(m)}
                     className="w-full py-2 px-3 bg-accent hover:bg-accent/90 active:scale-95 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>🎞</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
                     <span>Project In Suite</span>
                   </button>
                   <button
@@ -406,23 +406,19 @@ export function MovieDiscovery({
         })}
       </div>
 
-      {/* EMPTY SEARCH STATE */}
+      {/* EMPTY SEARCH STATE (One short line + one button) */}
       {searchResults.length === 0 && (
-        <div className="py-16 text-center space-y-3 bg-surface-2/50 border border-dashed border-border-subtle rounded-sm">
-          <div className="text-3xl">📽</div>
-          <h3 className="font-display text-lg text-text">No Archived Prints Found</h3>
-          <p className="text-sm font-sans text-muted max-w-md mx-auto">
-            No titles matched &ldquo;{searchQuery}&rdquo;. Try another director, genre, or check our unreleased nitrate vault.
-          </p>
+        <div className="py-12 text-center space-y-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl">
+          <h3 className="font-display text-base text-[#F3E9DC]">No movies found</h3>
           <button
             onClick={() => {
               setSearchQuery('');
               setSelectedGenre('All');
               setSelectedCategory('all');
             }}
-            className="px-4 py-1.5 bg-accent text-[#0E0B09] font-mono text-xs font-bold rounded-sm shadow-sm cursor-pointer hover:bg-accent/90 active:scale-95 transition-all"
+            className="px-4 py-2 bg-accent text-[#0E0B09] font-bold text-xs rounded-full cursor-pointer hover:brightness-105 active:scale-95 transition-all"
           >
-            Reset Vault Query
+            Reset
           </button>
         </div>
       )}
@@ -498,7 +494,7 @@ export function MovieDiscovery({
                     }}
                     className="flex-1 py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>🎞</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
                     <span>Select for New Suite</span>
                   </button>
                   <button

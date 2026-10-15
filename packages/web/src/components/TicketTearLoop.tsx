@@ -107,25 +107,25 @@ export function TicketTearLoop({ className = '' }: { className?: string }) {
   return (
     <div
       ref={containerRef}
-      className={`relative inline-flex items-center justify-center p-4 ${className}`}
+      className={`relative inline-flex items-center justify-center p-2 sm:p-4 max-w-full ${className}`}
     >
-      <div className="tear-ticket-wrapper relative flex items-stretch filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]">
+      <div className="tear-ticket-wrapper relative flex items-stretch filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)] max-w-full">
         {/* LEFT TICKET BODY (70% of ticket) */}
-        <div className="tear-ticket-left relative w-64 p-5 bg-surface-2 border border-border-brass rounded-l-md overflow-hidden flex flex-col justify-between">
+        <div className="tear-ticket-left relative w-48 sm:w-64 p-3.5 sm:p-5 bg-surface-2 border border-border-brass rounded-l-md overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-center text-[10px] font-mono text-accent mb-2">
+            <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-mono text-accent mb-2">
               <span className="tracking-widest uppercase">ADMISSION PASS</span>
               <span>NO. 004812</span>
             </div>
-            <div className="font-display font-bold text-xl text-text leading-tight mb-1">
+            <div className="font-display font-bold text-lg sm:text-xl text-text leading-tight mb-1">
               Cinema Royale
             </div>
-            <div className="text-xs text-muted font-sans">
+            <div className="text-[11px] sm:text-xs text-muted font-sans">
               Balcony Suite 4 • 70mm Roadshow Cut
             </div>
           </div>
 
-          <div className="mt-6 flex justify-between items-end text-[10px] font-mono text-muted-dark border-t border-border-subtle pt-3">
+          <div className="mt-4 sm:mt-6 flex justify-between items-end text-[9px] sm:text-[10px] font-mono text-muted-dark border-t border-border-subtle pt-2.5 sm:pt-3">
             <div>ROW A • SEAT 14</div>
             <div className="text-live">SYNC MASTER</div>
           </div>
@@ -135,10 +135,10 @@ export function TicketTearLoop({ className = '' }: { className?: string }) {
         </div>
 
         {/* PERFORATION SEAM FLASH EFFECT */}
-        <div className="tear-seam-flash absolute left-64 top-0 bottom-0 w-1 bg-accent/80 opacity-0 pointer-events-none blur-[1px]" />
+        <div className="tear-seam-flash absolute left-48 sm:left-64 top-0 bottom-0 w-1 bg-accent/80 opacity-0 pointer-events-none blur-[1px]" />
 
         {/* RIGHT TICKET STUB (Tear-off piece) */}
-        <div className="tear-stub-right relative w-28 p-4 bg-surface border border-l-0 border-border-brass rounded-r-md flex flex-col justify-between items-center text-center origin-top-left">
+        <div className="tear-stub-right relative w-20 sm:w-28 p-2.5 sm:p-4 bg-surface border border-l-0 border-border-brass rounded-r-md flex flex-col justify-between items-center text-center origin-top-left">
           {/* Dashed Tear Line indicator */}
           <div className="absolute left-0 top-0 bottom-0 w-[1px] border-l border-dashed border-border-brass-bright" />
 

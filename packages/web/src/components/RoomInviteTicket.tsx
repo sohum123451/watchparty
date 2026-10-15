@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { FilmReelSpinner } from './FilmReelSpinner';
 import { useAnime } from '@/motion/useAnime';
 import { MotionDurations, MotionEasings } from '@/motion/tokens';
+import { triggerCurtainWipe } from '@/motion/CurtainWipe';
 import { animate } from 'animejs';
 
 export interface RoomInviteDetails {
@@ -87,13 +88,15 @@ export function RoomInviteTicket({
       }, 350);
     }
 
-    // After animation, simulate entry into theatre auditorium
+    // After animation, simulate entry into theatre auditorium with curtain wipe
     setTimeout(() => {
       setAdmitted(true);
       setTimeout(() => {
-        router.push(`/room/${encodeURIComponent(room.roomCode)}`);
-      }, 1100);
-    }, 900);
+        triggerCurtainWipe(() => {
+          router.push(`/room/${encodeURIComponent(room.roomCode)}`);
+        });
+      }, 650);
+    }, 850);
   };
 
   return (
@@ -104,7 +107,7 @@ export function RoomInviteTicket({
         className="relative bg-surface border-2 border-border-brass rounded-sm shadow-velvet-raised overflow-hidden filter drop-shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex flex-col md:flex-row"
       >
         {/* TICKET BODY (LEFT 70%) */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-border-brass relative">
+        <div className="flex-1 p-5 md:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-border-brass relative">
           <div>
             {/* Header / Room Code */}
             <div className="flex justify-between items-center text-xs font-mono text-accent mb-3">
@@ -127,7 +130,7 @@ export function RoomInviteTicket({
               <span className="text-text font-medium">{room.roomName}</span>
               <span className="text-muted-dark">&bull;</span>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-accent/15 border border-border-brass-bright rounded-sm font-mono text-accent text-[11px] font-bold">
-                PROJECTIONIST: {room.hostName}
+                Host: {room.hostName}
               </span>
             </div>
 
@@ -135,7 +138,7 @@ export function RoomInviteTicket({
             <div className="p-3 bg-surface-2 border border-border-subtle rounded-sm mb-6">
               <div className="flex justify-between items-center text-xs font-mono text-muted mb-2">
                 <span>Who&apos;s Inside</span>
-                <span className="text-live">{room.memberCount} Patrons in Suite</span>
+                <span className="text-live">{room.memberCount} inside</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -162,7 +165,7 @@ export function RoomInviteTicket({
             {/* Guest Name Input */}
             <div className="mb-2">
               <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1">
-                Your Seat Tag / Name
+                Name
               </label>
               <input
                 type="text"
@@ -193,10 +196,13 @@ export function RoomInviteTicket({
         {/* TICKET STUB TEAR-OFF (RIGHT 30%) */}
         <div
           ref={stubRightRef}
-          className="w-full md:w-52 p-6 bg-surface-2 flex flex-col justify-between items-center text-center relative border-t md:border-t-0 border-dashed border-border-brass origin-top-left"
+          className="w-full md:w-52 p-4 md:p-6 bg-surface-2 flex flex-col justify-between items-center text-center relative border-t md:border-t-0 border-dashed border-border-brass origin-top-left"
         >
-          {/* Semicircular Cutout Notch (Left Edge of Right Stub) */}
+          {/* Semicircular Cutout Notch (Left Edge of Right Stub on Desktop) */}
           <div className="hidden md:block absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full bg-bg border border-border-brass pointer-events-none z-10" />
+
+          {/* Semicircular Cutout Notch (Top Seam on Mobile) */}
+          <div className="md:hidden absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-bg border border-border-brass pointer-events-none z-10" />
 
           <div className="w-full">
             <span className="font-mono text-[10px] text-accent tracking-widest uppercase block mb-1">
@@ -211,7 +217,7 @@ export function RoomInviteTicket({
           </div>
 
           {/* Barcode Graphic */}
-          <div className="flex gap-1.5 h-12 my-6 items-stretch opacity-80">
+          <div className="flex gap-1.5 h-8 sm:h-12 my-3 sm:my-6 items-stretch opacity-80">
             <div className="w-1 bg-muted" />
             <div className="w-2 bg-muted" />
             <div className="w-0.5 bg-muted" />
@@ -235,14 +241,11 @@ export function RoomInviteTicket({
                 <span>Admitted!</span>
               ) : (
                 <>
-                  <span>✂</span>
-                  <span>Tear &amp; Join</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                  <span>Join</span>
                 </>
               )}
             </button>
-            <span className="font-mono text-[8px] text-muted-dark block mt-2">
-              CLICKS TICKET COLLECTOR
-            </span>
           </div>
         </div>
       </div>

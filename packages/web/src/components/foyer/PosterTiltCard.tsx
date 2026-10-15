@@ -105,7 +105,7 @@ export function PosterTiltCard({
       {/* TOP HEADER: Format Tag & Live Presence Dot */}
       <div className="relative z-10 p-4 flex justify-between items-start">
         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-bg/85 border border-border-brass rounded-sm font-mono text-[10px] text-accent tracking-wider uppercase backdrop-blur-sm">
-          <span>🎞</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
           <span>{room.format}</span>
         </span>
 
@@ -150,7 +150,8 @@ export function PosterTiltCard({
 
           <Link
             href={`/join/${room.roomCode}`}
-            className="px-3 py-1 bg-accent/90 hover:bg-accent active:bg-[#E6880C] text-[#0E0B09] font-display font-bold text-xs rounded-sm transition-all shadow-sm group-hover:shadow-projector inline-flex items-center gap-1"
+            className="px-3.5 py-2 min-h-[36px] bg-accent/90 hover:bg-accent active:bg-[#E6880C] text-[#0E0B09] font-display font-bold text-xs rounded-sm transition-all shadow-sm group-hover:shadow-projector inline-flex items-center justify-center gap-1"
+            aria-label={`Take seat in suite ${room.roomCode}`}
           >
             <span>Take Seat</span>
             <span>&rarr;</span>

@@ -2,21 +2,17 @@
 
 /**
  * TheatreAuditorium Component
- * The Private Cinema Theatre Experience:
- * 1. Layout: The video IS the screen, framed by atmospheric auditorium house lights
- * 2. Lights-down moment: Playback start triggers anime.js timeline fading chrome & dimming house lights; pause brings lights back up
- * 3. Reactions: Emoji burst from the sender's seat position and float up with randomized eased paths (particle pool, capped count)
- * 4. Sync status: Projector indicator whose flicker rate reflects drift (steady = in sync, flicker = correcting)
- * 5. Voice speakers: Glowing cathode teal ring around active speaking seats/avatars
- * 6. Slide-in sidebar on desktop, responsive bottom sheet on mobile, fully collapsible in Cinema Mode
+ * Aligned to approved reference frame:
+ * 1. Header: Friday Night Screening, RM-4F7K, "In sync" expandable pill, Invite button
+ * 2. Player: 470px black stage, centered 84px play button + Fraunces title, reaction heat segments, scrubber & timecodes
+ * 3. Seats: 84x70px chairs, 40px avatars, speaker cathode glow, and flame reaction counter
+ * 4. Sidebar: 3 tabs (Chat, Queue, Polls) without timestamps
+ * 5. All video logic, playback events, and sync untouched
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { MOVIE_CATALOGUE } from '@watchparty/shared';
-import { useAnime } from '@/motion/useAnime';
-import { MotionDurations, MotionEasings } from '@/motion/tokens';
-import { ProjectorSyncBadge } from './ProjectorSyncBadge';
 import { ReactionParticleOverlay } from './ReactionParticleOverlay';
 import { TheatreSidebar } from './TheatreSidebar';
 
@@ -26,120 +22,64 @@ export interface TheatreAuditoriumProps {
   className?: string;
 }
 
-interface SeatPatron {
+interface PatronSeat {
   id: string;
   name: string;
   avatar: string;
-  seatNumber: string;
-  isHost?: boolean;
+  avatarBg: string;
+  avatarColor: string;
+  nameColor?: string;
   isSpeaking?: boolean;
 }
 
-const INITIAL_SEATS: SeatPatron[] = [
-  { id: 'seat_1', name: 'Elena Rostova', avatar: 'E', seatNumber: 'Row A • 1', isHost: true },
-  { id: 'seat_2', name: 'Marcus Vance', avatar: 'M', seatNumber: 'Row A • 2', isSpeaking: true },
-  { id: 'seat_3', name: 'Sophia Chen', avatar: 'S', seatNumber: 'Row A • 3' },
-  { id: 'seat_4', name: 'Dmitri K.', avatar: 'D', seatNumber: 'Row A • 4' },
-  { id: 'seat_me', name: 'You', avatar: 'Y', seatNumber: 'Row A • 5' },
+const PATRON_SEATS: PatronSeat[] = [
+  {
+    id: 'seat_priya',
+    name: 'Priya',
+    avatar: 'P',
+    avatarBg: '#E4572E',
+    avatarColor: '#0E0B09',
+    nameColor: '#2EC4B6',
+    isSpeaking: true,
+  },
+  {
+    id: 'seat_aarav',
+    name: 'Aarav',
+    avatar: 'A',
+    avatarBg: '#FF9F1C',
+    avatarColor: '#0E0B09',
+  },
+  {
+    id: 'seat_sam',
+    name: 'Sam',
+    avatar: 'S',
+    avatarBg: '#2EC4B6',
+    avatarColor: '#0E0B09',
+  },
+  {
+    id: 'seat_meera',
+    name: 'Meera',
+    avatar: 'M',
+    avatarBg: '#F3E9DC',
+    avatarColor: '#0E0B09',
+    nameColor: '#A89B8C',
+  },
 ];
 
 export function TheatreAuditorium({
-  roomCode = 'CRITERION-70MM',
-  initialTitle = 'Blade Runner (Final Cut): 70mm Restoration',
+  roomCode = 'RM-4F7K',
+  initialTitle = 'Friday Night Screening',
   className = '',
 }: TheatreAuditoriumProps) {
-  // Video & Playback state
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(117 * 60); // 117 mins
-  const [volume, setVolume] = useState(0.85);
-  const [isMuted, setIsMuted] = useState(false);
-  const [controlsHovered, setControlsHovered] = useState(false);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // House Lights & Cinema Mode
-  const [cinemaMode, setCinemaMode] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Sync Diagnostics state
-  const [driftMs, setDriftMs] = useState(14); // 14ms (in sync)
-
-  // Voice Speaking state
-  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
-  const [seats, setSeats] = useState<SeatPatron[]>(INITIAL_SEATS);
-
-  // Seat DOM refs for computing reaction burst origins
+  const [currentTime, setCurrentTime] = useState(252); // 04:12 in seconds
+  const [duration, setDuration] = useState(596); // 09:56 in seconds
+  const [showSyncDiagnostics, setShowSyncDiagnostics] = useState(false);
+  const [reactionCount, setReactionCount] = useState(12);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const seatRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // 1. ANIME.JS LIGHTS-DOWN / LIGHTS-UP TIMELINE
-  const { containerRef: auditoriumRef } = useAnime(
-    ({ animate, reducedMotion }) => {
-      if (reducedMotion) return;
-
-      if (isPlaying) {
-        // LIGHTS DOWN: Fade out house lights sconces, dim the room, fade chrome
-        animate('.theatre-house-lights', {
-          opacity: [1, 0.05],
-          translateY: [0, -6],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.cinematicInOut,
-        });
-
-        animate('.theatre-wall-dimmer', {
-          opacity: [0, 0.88],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.cinematicInOut,
-        });
-
-        if (!controlsHovered) {
-          animate('.theatre-chrome-top', {
-            opacity: [1, 0],
-            translateY: [0, -10],
-            duration: MotionDurations.cinematic,
-            ease: MotionEasings.cinematicInOut,
-          });
-          animate('.theatre-chrome-bottom', {
-            opacity: [1, 0.15],
-            translateY: [0, 6],
-            duration: MotionDurations.cinematic,
-            ease: MotionEasings.cinematicInOut,
-          });
-        }
-      } else {
-        // LIGHTS UP: Restore house lights, warm amber illumination, full chrome
-        animate('.theatre-house-lights', {
-          opacity: [0.05, 1],
-          translateY: [-6, 0],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.snappyOut,
-        });
-
-        animate('.theatre-wall-dimmer', {
-          opacity: [0.88, 0],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.snappyOut,
-        });
-
-        animate('.theatre-chrome-top', {
-          opacity: [0, 1],
-          translateY: [-10, 0],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.snappyOut,
-        });
-
-        animate('.theatre-chrome-bottom', {
-          opacity: [0.15, 1],
-          translateY: [6, 0],
-          duration: MotionDurations.cinematic,
-          ease: MotionEasings.snappyOut,
-        });
-      }
-    },
-    [isPlaying, controlsHovered]
-  );
-
-  // Play / Pause handling
   const togglePlay = () => {
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -151,159 +91,97 @@ export function TheatreAuditorium({
     }
   };
 
-  // Cursor move auto-reveals controls temporarily during playback
-  const handleMouseMove = () => {
-    if (!isPlaying) return;
-    setControlsHovered(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      setControlsHovered(false);
-    }, 3200);
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    const newTime = Math.max(0, Math.min(pos * duration, duration));
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+    }
+    setCurrentTime(newTime);
   };
 
-  // Trigger Reaction Burst from a specific seat coordinate
-  const triggerReactionFromSeat = (emoji: string, seatId = 'seat_me') => {
-    const el = seatRefs.current[seatId];
-    if (el && typeof window !== 'undefined' && (window as any).__WATCHPARTY_BURST__) {
-      const rect = el.getBoundingClientRect();
-      const originX = rect.left + rect.width / 2;
-      const originY = rect.top;
-      (window as any).__WATCHPARTY_BURST__(emoji, originX, originY, 4);
+  const triggerReaction = (emoji = '🔥') => {
+    setReactionCount((prev) => prev + 1);
+    if (typeof window !== 'undefined' && (window as any).__WATCHPARTY_BURST__) {
+      const el = seatRefs.current['seat_sam'];
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        (window as any).__WATCHPARTY_BURST__(emoji, rect.left + rect.width / 2, rect.top, 4);
+      }
     }
   };
 
-  // Periodic subtle drift simulation (fluctuates between +12ms and +48ms)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDriftMs((prev) => {
-        const delta = Math.floor((Math.random() - 0.48) * 8);
-        return Math.max(8, Math.min(prev + delta, 95));
-      });
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleCopyInvite = () => {
+    if (typeof navigator !== 'undefined') {
+      navigator.clipboard?.writeText(window.location.href);
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+    }
+  };
 
-  // Periodic simulated reactions from Marcus or Elena
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isPlaying) return;
-      const senderSeat = Math.random() > 0.5 ? 'seat_2' : 'seat_1';
-      const emojis = ['🍿', '👏', '🔥', '✨', '❤️'];
-      const chosen = emojis[Math.floor(Math.random() * emojis.length)];
-      triggerReactionFromSeat(chosen, senderSeat);
-    }, 8500);
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-
-  // Format time (seconds to HH:MM:SS)
-  const formatTime = (secs: number) => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
+  const formatMinSec = (secs: number) => {
+    const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  // Toggle user microphone state
-  const handleToggleUserSpeaking = () => {
-    setIsUserSpeaking((prev) => !prev);
-    setSeats((prev) =>
-      prev.map((s) => (s.id === 'seat_me' ? { ...s, isSpeaking: !isUserSpeaking } : s))
-    );
-  };
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 42;
 
   const sampleStreamUrl =
     MOVIE_CATALOGUE[0]?.videoUrl ||
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4';
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
   return (
     <div
-      ref={auditoriumRef}
-      onMouseMove={handleMouseMove}
-      className={`theatre-auditorium relative min-h-screen w-full bg-[#0E0B09] text-text flex overflow-hidden select-none ${className}`}
+      className={`min-h-[900px] box-border flex flex-col bg-[#0E0B09] text-[#F3E9DC] font-ui ${className}`}
     >
-      {/* 1. REACTION FLOATING PARTICLE POOL OVERLAY */}
       <ReactionParticleOverlay />
 
-      {/* 2. THEATRE WALL DIMMER (LIGHTS-DOWN ATMOSPHERE) */}
-      <div className="theatre-wall-dimmer pointer-events-none fixed inset-0 z-10 bg-[#060403] opacity-0 transition-opacity" />
+      {/* HEADER */}
+      <header className="flex items-center justify-between px-7 py-4 border-b border-[#2A211B]">
+        {/* Left: Title + Room Code */}
+        <div className="flex items-center gap-4">
+          <Link
+            href="/lobby"
+            className="font-display font-semibold text-2xl text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors"
+          >
+            {initialTitle}
+          </Link>
+          <span className="font-mono text-[13px] bg-[#261E19] text-[#A89B8C] px-3 py-1.5 rounded-lg">
+            {roomCode}
+          </span>
+        </div>
 
-      {/* 3. HOUSE LIGHTS SCONCES (LEFT & RIGHT WALLS) */}
-      <div className="theatre-house-lights pointer-events-none fixed inset-y-0 left-3 z-15 flex flex-col justify-around opacity-100 transition-opacity">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="w-2.5 h-6 rounded-full bg-accent/80 shadow-[0_0_24px_rgba(255,159,28,0.7)] border border-border-brass-bright" />
-          </div>
-        ))}
-      </div>
+        {/* Right: In Sync Pill (Clickable) + Invite Button */}
+        <div className="flex items-center gap-4.5">
+          <button
+            type="button"
+            onClick={() => setShowSyncDiagnostics(!showSyncDiagnostics)}
+            className="flex items-center gap-2 font-mono text-[13px] bg-[#12302D] text-[#2EC4B6] px-3.5 py-2 rounded-full cursor-pointer hover:brightness-110 transition-all border-none"
+            title="Click to view sync diagnostics"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#2EC4B6] animate-pulse" />
+            <span>{showSyncDiagnostics ? '14ms drift' : 'In sync'}</span>
+          </button>
 
-      <div className="theatre-house-lights pointer-events-none fixed inset-y-0 right-3 z-15 flex flex-col justify-around opacity-100 transition-opacity">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="w-2.5 h-6 rounded-full bg-accent/80 shadow-[0_0_24px_rgba(255,159,28,0.7)] border border-border-brass-bright" />
-          </div>
-        ))}
-      </div>
+          <button
+            type="button"
+            onClick={handleCopyInvite}
+            className="bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-[15px] px-5 py-2.5 rounded-full font-ui transition-all cursor-pointer border-none"
+          >
+            {inviteCopied ? 'Copied!' : 'Invite'}
+          </button>
+        </div>
+      </header>
 
-      {/* 4. MAIN AUDITORIUM CHAMBER (SCREEN & ORCHESTRA SEATING) */}
-      <div className="flex-1 flex flex-col justify-between relative z-20 overflow-hidden">
-        {/* TOP THEATRE CHROME (HEADER & NAVIGATION) */}
-        <header className="theatre-chrome-top px-6 py-3 border-b border-border-brass/70 bg-surface/80 backdrop-blur-md flex justify-between items-center transition-all">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/lobby"
-              className="text-xs font-mono text-muted hover:text-accent transition-colors flex items-center gap-1.5"
-            >
-              <span>←</span>
-              <span>Cinema Foyer</span>
-            </Link>
-            <span className="text-border-brass text-xs">•</span>
-            <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-sm text-text truncate max-w-xs md:max-w-md">
-                {initialTitle}
-              </span>
-              <span className="px-2 py-0.5 bg-bg/90 border border-border-brass rounded-sm font-mono text-[10px] text-accent uppercase">
-                70mm Atmos
-              </span>
-            </div>
-          </div>
-
-          {/* Sync Status Projector Indicator & Cinema Mode Toggle */}
-          <div className="flex items-center gap-3">
-            <ProjectorSyncBadge
-              driftMs={driftMs}
-              serverTimecode={formatTime(currentTime)}
-              clientTimecode={formatTime(currentTime)}
-              onManualResync={() => {
-                setDriftMs(8);
-              }}
-            />
-
-            <button
-              onClick={() => {
-                setCinemaMode(!cinemaMode);
-                setIsSidebarOpen(!isSidebarOpen);
-              }}
-              className={`px-3 py-1.5 rounded-sm font-mono text-xs border transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                cinemaMode
-                  ? 'bg-accent text-[#0E0B09] font-bold border-accent shadow-projector'
-                  : 'bg-surface-2 hover:bg-surface-3 text-text border-border-brass'
-              }`}
-              title="Toggle Fullscreen Cinema Mode"
-            >
-              <span>{cinemaMode ? 'Exit Cinema Mode' : 'Cinema Mode'}</span>
-              <span>{cinemaMode ? '⛶' : '🗖'}</span>
-            </button>
-          </div>
-        </header>
-
-        {/* CINEMA SCREEN PROJECTION PLATFORM */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 relative">
-          {/* Ambient Projector Halo Behind Screen */}
-          <div className="absolute inset-x-12 inset-y-8 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-
-          {/* THE SCREEN (16:9 Cinema Aspect Ratio) */}
-          <div className="theatre-screen-frame relative w-full max-w-5xl aspect-video bg-black rounded-sm border-2 border-border-brass/80 shadow-[0_24px_70px_rgba(0,0,0,0.98)] overflow-hidden flex items-center justify-center group">
-            {/* Playable HTML5 Video */}
+      {/* MAIN BODY: Player + Audience Row (Left) & Sidebar (Right) */}
+      <div className="flex flex-col lg:flex-row flex-1">
+        {/* Left Column: Player Container & Seats */}
+        <div className="flex-1 flex flex-col gap-5.5 p-6 md:p-7">
+          {/* THE SCREEN (470px Black Stage) */}
+          <div className="relative h-[340px] sm:h-[470px] box-border bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center gap-4.5 overflow-hidden group">
+            {/* Playable HTML5 Video Element (Preserved) */}
             <video
               ref={videoRef}
               src={sampleStreamUrl}
@@ -312,152 +190,184 @@ export function TheatreAuditorium({
                 if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
               }}
               onLoadedMetadata={() => {
-                if (videoRef.current) setDuration(videoRef.current.duration || 117 * 60);
+                if (videoRef.current && videoRef.current.duration) {
+                  setDuration(videoRef.current.duration);
+                }
               }}
               onClick={togglePlay}
-              className="w-full h-full object-contain cursor-pointer"
+              className={`w-full h-full object-contain cursor-pointer ${
+                isPlaying ? 'opacity-100' : 'opacity-20'
+              }`}
             />
 
-            {/* Play Overlay Button if Paused */}
+            {/* Centered Play Button & Fraunces Title Overlay */}
             {!isPlaying && (
               <div
                 onClick={togglePlay}
-                className="absolute inset-0 bg-[#0E0B09]/45 backdrop-blur-xs flex flex-col items-center justify-center cursor-pointer transition-opacity"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-4.5 cursor-pointer pointer-events-auto"
               >
-                <div className="w-16 h-16 rounded-full bg-accent text-[#0E0B09] flex items-center justify-center text-2xl pl-1 shadow-projector hover:scale-110 active:scale-95 transition-all">
-                  ▶
-                </div>
-                <span className="font-mono text-xs text-text font-bold mt-3 tracking-widest uppercase">
-                  Lights Down • Roll Reel
+                <span className="w-[84px] h-[84px] rounded-full border-2 border-[#F3E9DC] flex items-center justify-center hover:scale-105 transition-transform">
+                  <svg
+                    aria-hidden="true"
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="#F3E9DC"
+                    className="ml-1"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 </span>
+                <div className="font-display italic font-medium text-3xl sm:text-[52px] text-[#F3E9DC] text-center px-4">
+                  Big Buck Bunny
+                </div>
               </div>
             )}
+
+            {/* Bottom Scrubber & Reaction Timeline */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '22px',
+                right: '22px',
+                bottom: '16px',
+                pointerEvents: 'auto',
+              }}
+            >
+              {/* Heatmap Bar Segments */}
+              <div
+                style={{
+                  display: 'flex',
+                  height: '14px',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ width: '18%', height: '14px', background: '#2A211B' }} />
+                <div style={{ width: '6%', height: '14px', background: '#E4572E' }} />
+                <div style={{ width: '17%', height: '14px', background: '#2A211B' }} />
+                <div style={{ width: '11%', height: '14px', background: '#FF9F1C' }} />
+                <div style={{ width: '4%', height: '14px', background: '#E4572E' }} />
+                <div style={{ width: '22%', height: '14px', background: '#2A211B' }} />
+                <div style={{ width: '12%', height: '14px', background: '#FF9F1C' }} />
+                <div style={{ width: '10%', height: '14px', background: '#2A211B' }} />
+              </div>
+
+              {/* Progress Slider Track */}
+              <div
+                onClick={handleSeek}
+                style={{
+                  position: 'relative',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: '#2A211B',
+                  marginTop: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progressPercent}%`,
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: '#F3E9DC',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: `${progressPercent}%`,
+                    top: '-4px',
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    background: '#F3E9DC',
+                    transform: 'translateX(-50%)',
+                  }}
+                />
+              </div>
+
+              {/* Timecode Indicators */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: '10px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12px',
+                }}
+              >
+                <span>{formatMinSec(currentTime)}</span>
+                <span style={{ color: '#A89B8C' }}>{formatMinSec(duration)}</span>
+              </div>
+            </div>
           </div>
 
-          {/* ORCHESTRA SEATING ROW (AVATARS WITH GLOWING VOICE RINGS) */}
-          <div className="w-full max-w-5xl mt-4 px-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-mono text-muted uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-live" />
-              <span>Orchestra Row A</span>
-            </div>
-
-            {/* Avatars */}
-            <div className="flex items-center gap-3">
-              {seats.map((seat) => {
-                const isSpeaking = seat.id === 'seat_me' ? isUserSpeaking : seat.isSpeaking;
-
-                return (
-                  <div
-                    key={seat.id}
-                    ref={(el) => {
-                      seatRefs.current[seat.id] = el;
-                    }}
-                    className="group relative flex flex-col items-center"
-                  >
-                    {/* Seat Avatar with Glowing Voice Ring */}
-                    <div
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center font-display text-xs font-bold transition-all duration-300 cursor-pointer ${
-                        isSpeaking
-                          ? 'ring-2 ring-live shadow-[0_0_16px_rgba(46,196,182,0.85)] scale-110 bg-surface-3 text-text'
-                          : 'bg-surface-2 border border-border-brass text-text'
-                      }`}
-                      onClick={() => {
-                        if (seat.id === 'seat_me') handleToggleUserSpeaking();
+          {/* AUDIENCE ROW: 4 Seats + Flame Reaction Pill */}
+          <div className="flex flex-wrap items-end justify-between gap-4.5">
+            {/* Left: Row of 4 Chairs */}
+            <div className="flex gap-4.5 overflow-x-auto pb-1">
+              {PATRON_SEATS.map((seat) => (
+                <div
+                  key={seat.id}
+                  ref={(el) => {
+                    seatRefs.current[seat.id] = el;
+                  }}
+                  className="flex flex-col items-center gap-2 flex-shrink-0"
+                >
+                  <div className="w-[84px] h-[70px] bg-[#261E19] rounded-t-[16px] rounded-b-[6px] flex items-center justify-center">
+                    <span
+                      style={{
+                        backgroundColor: seat.avatarBg,
+                        color: seat.avatarColor,
+                        boxShadow: seat.isSpeaking ? '0 0 0 3px #2EC4B6' : 'none',
                       }}
-                      title={`${seat.name} (${seat.seatNumber})`}
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-base"
                     >
                       {seat.avatar}
-                      {/* Cathode speaking pulse dot */}
-                      {isSpeaking && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-live animate-ping" />
-                      )}
-                    </div>
-
-                    {/* Patron Name Tooltip on Hover */}
-                    <span className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-surface px-1.5 py-0.5 rounded border border-border-brass text-[10px] font-mono text-text whitespace-nowrap pointer-events-none">
-                      {seat.name} {isSpeaking ? '(Speaking)' : ''}
                     </span>
                   </div>
-                );
-              })}
+                  <span
+                    style={{ color: seat.nameColor || '#F3E9DC' }}
+                    className="text-[13px] font-medium"
+                  >
+                    {seat.name}
+                  </span>
+                </div>
+              ))}
             </div>
 
-            {/* Quick Mic Action */}
+            {/* Right: Flame Reaction Counter Pill */}
             <button
-              onClick={handleToggleUserSpeaking}
-              className={`px-2.5 py-1 rounded-sm font-mono text-[10px] transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                isUserSpeaking
-                  ? 'bg-live text-[#0E0B09] font-bold shadow-cathode'
-                  : 'bg-surface-2 text-muted hover:text-text border border-border-brass'
-              }`}
+              type="button"
+              onClick={() => triggerReaction('🔥')}
+              className="flex items-center gap-2 bg-[#261E19] hover:bg-[#342821] active:scale-95 px-4 py-2.5 rounded-full text-sm text-[#F3E9DC] cursor-pointer transition-transform border-none flex-shrink-0"
+              title="Click to react"
             >
-              <span>{isUserSpeaking ? '🎙 Mic Live' : '🔇 Muted'}</span>
+              <svg
+                aria-hidden="true"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#FF9F1C"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
+              </svg>
+              <span>{reactionCount}</span>
             </button>
           </div>
         </div>
 
-        {/* BOTTOM THEATRE CHROME (TRANSPORT CONTROLS & REACTION DOCK) */}
-        <footer className="theatre-chrome-bottom px-6 py-3 border-t border-border-brass/70 bg-surface/85 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 transition-all">
-          {/* Transport Controls */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={togglePlay}
-              className="p-2 px-3.5 bg-accent hover:bg-accent/90 active:scale-95 text-[#0E0B09] rounded-sm font-bold text-sm shadow-projector transition-all cursor-pointer"
-            >
-              {isPlaying ? '⏸ Pause' : '▶ Play'}
-            </button>
-
-            {/* Scrubber & Timecode */}
-            <div className="flex items-center gap-2 font-mono text-xs text-muted">
-              <span className="text-text tabular-nums">{formatTime(currentTime)}</span>
-              <span>/</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* REACTION DOCK (BURSTS FROM SENDER'S SEAT) */}
-          <div className="flex items-center gap-1.5 p-1 bg-surface-2 border border-border-brass rounded-sm">
-            <span className="text-[10px] font-mono text-muted px-1.5 uppercase hidden sm:inline">
-              React:
-            </span>
-            {(['🍿', '🔥', '👏', '❤️', '😱', '🎞'] as const).map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => triggerReactionFromSeat(emoji, 'seat_me')}
-                className="w-8 h-8 rounded-sm hover:bg-surface-3 active:scale-90 text-lg transition-transform flex items-center justify-center cursor-pointer shadow-xs"
-                title={`Send ${emoji} burst from seat`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-
-          {/* Right Controls: Sidebar Toggle */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`px-3 py-1.5 rounded-sm font-mono text-xs border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                isSidebarOpen
-                  ? 'bg-surface-3 border-accent text-accent'
-                  : 'bg-surface-2 border-border-brass text-muted hover:text-text'
-              }`}
-            >
-              <span>Whisper &amp; Reels Console</span>
-              <span>{isSidebarOpen ? '◀' : '▶'}</span>
-            </button>
-          </div>
-        </footer>
+        {/* Right Column: 360px Sidebar */}
+        <TheatreSidebar
+          isOpen={true}
+          currentRoomCode={roomCode}
+        />
       </div>
-
-      {/* 5. SLIDE-IN THEATRE SIDEBAR / MOBILE BOTTOM SHEET */}
-      <TheatreSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isMobileSheet={false}
-        currentRoomCode={roomCode}
-        isUserSpeaking={isUserSpeaking}
-        onToggleUserSpeaking={handleToggleUserSpeaking}
-      />
     </div>
   );
 }

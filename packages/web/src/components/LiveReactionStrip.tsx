@@ -19,10 +19,10 @@ interface ReactionItem {
 }
 
 const SAMPLE_REACTIONS: ReactionItem[] = [
-  { id: 1, user: 'Elena (Host)', avatar: 'E', reaction: '🍿 Perfect sync', role: 'Projectionist' },
-  { id: 2, user: 'Marcus', avatar: 'M', reaction: '😮 Unbelievable 70mm grain' },
-  { id: 3, user: 'Sophia', avatar: 'S', reaction: '❤️ That audio mix!' },
-  { id: 4, user: 'Leo', avatar: 'L', reaction: '🎞 Shutter opened' },
+  { id: 1, user: 'Elena', avatar: 'E', reaction: 'In sync' },
+  { id: 2, user: 'Marcus', avatar: 'M', reaction: 'Sharp grain' },
+  { id: 3, user: 'Sophia', avatar: 'S', reaction: 'Great mix' },
+  { id: 4, user: 'Leo', avatar: 'L', reaction: 'Roll reel' },
 ];
 
 export function LiveReactionStrip({ className = '' }: { className?: string }) {

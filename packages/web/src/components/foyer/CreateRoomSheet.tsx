@@ -167,7 +167,7 @@ export function CreateRoomSheet({
               >
                 <div className="flex items-center justify-between text-[10px] font-mono mb-1">
                   <span>FRAME 01</span>
-                  {currentStep > 1 && <span>✔</span>}
+                  {currentStep > 1 && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
                 <div className="font-display font-bold text-xs">
                   Film Source
@@ -191,7 +191,7 @@ export function CreateRoomSheet({
               >
                 <div className="flex items-center justify-between text-[10px] font-mono mb-1">
                   <span>FRAME 02</span>
-                  {currentStep > 2 && <span>✔</span>}
+                  {currentStep > 2 && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
                 <div className="font-display font-bold text-xs">
                   Suite & Access
@@ -265,7 +265,7 @@ export function CreateRoomSheet({
                       : 'text-muted hover:text-text'
                   }`}
                 >
-                  🎞 Repertory Vault
+                  Vault
                 </button>
                 <button
                   type="button"
@@ -276,7 +276,7 @@ export function CreateRoomSheet({
                       : 'text-muted hover:text-text'
                   }`}
                 >
-                  🌐 External Stream URL
+                  Stream URL
                 </button>
               </div>
 
@@ -388,7 +388,7 @@ export function CreateRoomSheet({
                       }`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span>🎞</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
                         <span>{fmt}</span>
                       </div>
                     </button>
@@ -534,7 +534,7 @@ export function CreateRoomSheet({
                     onClick={generateRandomCode}
                     className="text-[10px] font-mono text-accent hover:underline cursor-pointer"
                   >
-                    🎲 Roll New Code
+                    New code
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -698,11 +698,11 @@ export function CreateRoomSheet({
               disabled={isSubmitting}
               className="flex-1 py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 disabled:opacity-50 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>✂</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
               <span>
                 {isSubmitting
-                  ? 'Punching Ticket & Illuminating...'
-                  : 'Punch Master Ticket & Illuminate'}
+                  ? 'Punching...'
+                  : 'Punch Ticket'}
               </span>
             </button>
           )}

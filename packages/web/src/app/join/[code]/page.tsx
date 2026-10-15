@@ -22,14 +22,11 @@ export default async function JoinCodePage({
       </div>
 
       <div className="mb-6 w-full max-w-md text-center">
-        <span className="font-mono text-xs text-accent uppercase tracking-widest block mb-1">
-          Invitation Pass Verified
-        </span>
-        <h2 className="font-display font-bold text-2xl text-text">
+        <h2 className="font-display font-semibold text-2xl text-text">
           Room #{decodedCode}
         </h2>
-        <p className="text-xs text-muted mt-1">
-          Your admission stub is ready. Present your pass to enter the screening room.
+        <p className="text-sm text-muted mt-1">
+          Your pass is ready.
         </p>
       </div>
 

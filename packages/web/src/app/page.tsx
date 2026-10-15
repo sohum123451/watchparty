@@ -2,350 +2,198 @@
 
 /**
  * Watch Party Landing Page
- * Concept: "The Private Cinema"
- * - Asymmetric hero with large Fraunces display typography
- * - Looping 2D anime.js ticket tear sequence
- * - Marquee bulbs chasing along an edge with staggered opacity timeline
- * - Live reaction demo strip showing avatars reacting with timecode sync
- * - Short scroll narrative: Lobby -> Seats -> Lights Down -> Movie (No generic card grid!)
+ * Matched to approved Private Cinema reference frame.
+ * Tokens: bg #0E0B09, surface #1A1512, surface-2 #261E19, line #3A2E26, text #F3E9DC, muted #A89B8C, amber #FF9F1C, red #E4572E, teal #2EC4B6.
+ * Typography: Fraunces (display), DM Sans (UI), JetBrains Mono (codes).
+ * Flat colour blocks, no gradients, no emojis.
  */
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MarqueeBulbBorder } from '@/components/MarqueeBulbBorder';
-import { TicketTearLoop } from '@/components/TicketTearLoop';
-import { LiveReactionStrip } from '@/components/LiveReactionStrip';
-import { ProjectorLens3D } from '@/components/ProjectorLens3D';
 
 export default function LandingPage() {
   const router = useRouter();
-  const [quickRoomCode, setQuickRoomCode] = useState('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
 
-  const handleQuickJoin = (e: React.FormEvent) => {
+  const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickRoomCode.trim()) return;
-    router.push(`/join/${encodeURIComponent(quickRoomCode.trim())}`);
+    if (!roomCode.trim()) return;
+    router.push(`/join/${encodeURIComponent(roomCode.trim())}`);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg text-text selection:bg-accent selection:text-bg">
-      {/* 1. CHASING MARQUEE BULB TOP EDGE */}
-      <MarqueeBulbBorder count={36} />
+    <div className="relative min-h-screen box-border bg-[#0E0B09] text-[#F3E9DC] font-ui overflow-hidden flex flex-col justify-between pb-12">
+      {/* NAVIGATION */}
+      <nav className="relative flex items-center justify-between px-6 sm:px-12 md:px-16 py-7">
+        <Link
+          href="/"
+          className="flex items-center gap-3 font-display italic font-medium text-2xl sm:text-[28px] text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors"
+        >
+          <span className="w-3.5 h-3.5 rounded-full bg-[#FF9F1C] inline-block flex-shrink-0" />
+          <span>Watch Party</span>
+        </Link>
+        <div className="flex items-center gap-6 sm:gap-8 text-base">
+          <Link
+            href="/login"
+            className="text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors font-medium"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
+            className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm sm:text-base px-5 sm:px-5.5 py-2.5 sm:py-3 rounded-full hover:brightness-105 active:scale-95 transition-all shadow-none"
+          >
+            Get your ticket
+          </Link>
+        </div>
+      </nav>
 
-      {/* 2. GRAND FOYER HEADER & NAVIGATION */}
-      <header className="border-b border-border-brass/80 bg-surface/75 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-accent shadow-projector animate-pulse" />
-            <Link href="/" className="flex items-baseline gap-2 group">
-              <span className="font-display font-extrabold text-xl tracking-tight-display text-text group-hover:text-accent transition-colors">
-                WATCH PARTY
-              </span>
-              <span className="font-mono text-[10px] text-accent tracking-widest uppercase">
-                THE PRIVATE CINEMA
-              </span>
-            </Link>
-          </div>
-
-          <nav className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
-            <Link
-              href="/lobby"
-              className="text-text hover:text-accent font-semibold transition-colors py-1.5 px-3 rounded-sm border border-border-brass bg-surface-2 hover:bg-surface-3 flex items-center gap-1.5 shadow-sm"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-live animate-cathode-pulse" />
-              <span>Cinema Foyer</span>
-            </Link>
-            <Link
-              href="/motion-demo"
-              className="hidden sm:inline-flex text-muted hover:text-text transition-colors py-1.5 px-3 rounded-sm border border-transparent hover:border-border-brass"
-            >
-              Motion Atelier
-            </Link>
-            <Link
-              href="/login"
-              className="text-muted hover:text-text transition-colors py-1.5 px-3 rounded-sm border border-border-brass bg-surface-2 hover:bg-surface-3"
-            >
-              Will Call (Log In)
-            </Link>
+      {/* HERO SECTION */}
+      <main className="relative flex flex-col lg:flex-row items-start lg:items-center gap-12 px-6 sm:px-12 md:px-16 pt-4 md:pt-10">
+        {/* Left Column: Display Typography & Tagline */}
+        <div className="flex-[1.15] max-w-2xl">
+          <h1 className="my-5 font-display font-semibold text-5xl sm:text-7xl lg:text-[104px] leading-[0.96] tracking-[-0.03em] text-[#F3E9DC]">
+            Lights down.
+            <br />
+            <span className="italic font-medium text-[#FF9F1C]">Everyone’s in.</span>
+          </h1>
+          <p className="mb-9 text-lg sm:text-xl leading-[1.55] text-[#A89B8C]">
+            Watch together, perfectly in sync.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
             <Link
               href="/signup"
-              className="py-1.5 px-3.5 bg-accent text-[#0E0B09] font-semibold rounded-sm hover:shadow-projector transition-all"
+              className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-base sm:text-lg px-7 py-4 rounded-full hover:brightness-105 active:scale-95 transition-all inline-flex items-center justify-center text-center"
             >
-              Get Your Ticket
+              Get your ticket
             </Link>
-          </nav>
-        </div>
-      </header>
-
-      {/* 3. ASYMMETRIC HERO SECTION */}
-      <section className="relative px-6 pt-12 md:pt-20 pb-16 overflow-hidden">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* LEFT COLUMN: Large Display Typography (7 Columns) */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-2 border border-border-brass rounded-sm font-mono text-xs text-accent uppercase tracking-widest">
-              <span className="w-1.5 h-1.5 rounded-full bg-live shadow-cathode" />
-              <span>PRIVATE BALCONY SUITES &bull; ARCHIVAL 70MM</span>
-            </div>
-
-            <h1 className="font-display font-bold text-5xl sm:text-6xl md:text-7xl leading-[1.04] tracking-tight-display text-text">
-              Cinema as it was meant to be shared.
-            </h1>
-
-            <p className="text-muted text-base md:text-lg leading-relaxed max-w-xl font-sans">
-              An intimate screening room entered through a warm, dimly lit theatre lobby. Projector light, velvet, and friends across the globe sharing the exact same frame down to the millisecond.
-            </p>
-
-            {/* ACTION BUTTONS & ROOM CODE ENTRY */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <Link
-                href="/signup"
-                className="px-7 py-3.5 bg-accent hover:bg-[#FFAE38] active:bg-[#E6880C] text-[#0E0B09] font-display font-bold text-sm tracking-wide rounded-sm transition-all shadow-projector text-center"
+            {!showCodeInput ? (
+              <button
+                type="button"
+                onClick={() => setShowCodeInput(true)}
+                className="border-[1.5px] border-[#5A4A3E] text-[#F3E9DC] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-base sm:text-lg px-7 py-4 rounded-full transition-colors inline-flex items-center justify-center"
               >
-                Claim Your Balcony Pass
-              </Link>
-
-              {/* Quick Code Punch */}
-              <form onSubmit={handleQuickJoin} className="flex items-center bg-surface-2 border border-border-brass rounded-sm overflow-hidden p-1 shadow-velvet-inset">
+                Join with a code
+              </button>
+            ) : (
+              <form onSubmit={handleJoin} className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Enter Room Code..."
-                  value={quickRoomCode}
-                  onChange={(e) => setQuickRoomCode(e.target.value)}
-                  className="bg-transparent border-none text-xs font-mono text-text placeholder-muted-dark px-3 py-1.5 focus:outline-none w-36 uppercase tracking-wider"
+                  placeholder="RM-4F7K"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value)}
+                  autoFocus
+                  className="bg-[#1A1512] border border-[#3A2E26] rounded-full px-5 py-3.5 text-[#F3E9DC] font-mono text-base uppercase tracking-wider focus:outline-none focus:border-[#FF9F1C] w-36 sm:w-44"
+                  aria-label="Room code"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-surface-3 hover:bg-surface text-text font-mono text-xs font-semibold rounded-sm border border-border-brass transition-colors"
+                  className="bg-[#261E19] hover:bg-[#3A2E26] text-[#F3E9DC] border border-[#3A2E26] font-mono text-sm px-4 py-3.5 rounded-full transition-colors"
                 >
-                  Join
+                  Go
                 </button>
               </form>
-            </div>
-
-            <div className="pt-2 flex items-center gap-4 text-xs font-mono text-muted-dark">
-              <span>&bull; Zero Algorithms</span>
-              <span>&bull; Lossless Spatial Audio</span>
-              <span>&bull; E2EE Balcony Vaults</span>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: 2D Looping Ticket Tear Sequence (5 Columns) */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
-            <TicketTearLoop />
-            <span className="font-mono text-[10px] text-muted-dark mt-2 tracking-wider">
-              AUTHENTIC PERFORATED ADMISSION PASS &bull; ANIMATED STUB
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. LIVE REACTION DEMO STRIP */}
-      <section className="px-6 py-6 border-y border-border-brass bg-surface/40">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-[11px] font-mono text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-live" />
-            <span>Auditorium Whisper Channel &bull; Live Synchronization Preview</span>
-          </div>
-          <LiveReactionStrip />
-        </div>
-      </section>
-
-      {/* 5. PRODUCT STORY SCROLL NARRATIVE (NOT A GENERIC CARD GRID) */}
-      <section className="px-6 py-24 space-y-28 max-w-5xl mx-auto">
-        {/* NARRATIVE ACT I: THE LOBBY */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-5 space-y-3">
-            <span className="font-mono text-xs text-accent uppercase tracking-widest block">
-              Act I &bull; The Lobby
-            </span>
-            <h2 className="font-display font-bold text-3xl md:text-4xl text-text tracking-tight-display">
-              Step across the velvet rope.
-            </h2>
-            <p className="text-muted text-sm leading-relaxed">
-              No endless recommendation carousels or generic social feeds. You enter a physical foyer, generate a hand-pressed admission stub, and slip the code to the people you actually want to watch with.
-            </p>
-            <div className="pt-2 flex items-center gap-4">
-              <Link
-                href="/lobby"
-                className="font-mono text-xs text-accent hover:underline inline-flex items-center gap-1.5"
-              >
-                <span>Enter Cinema Foyer</span>
-                <span>&rarr;</span>
-              </Link>
-              <span className="text-muted text-xs">&bull;</span>
-              <Link
-                href="/join"
-                className="font-mono text-xs text-muted hover:text-text inline-flex items-center gap-1.5"
-              >
-                <span>Preview Ticket Stub</span>
-                <span>&rarr;</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="md:col-span-7 bg-surface p-6 border border-border-brass rounded-sm shadow-velvet-raised font-mono text-xs space-y-3">
-            <div className="flex justify-between text-muted border-b border-border-subtle pb-2">
-              <span>FOYER DISPATCH</span>
-              <span>BALCONY SUITE 4</span>
-            </div>
-            <div className="text-text space-y-1">
-              <div>&gt; Pass created: #CRITERION-70MM</div>
-              <div>&gt; Encryption: AES-GCM-256 Balcony Key Exchanged</div>
-              <div>&gt; Door locked to uninvited traffic</div>
-            </div>
-            <div className="text-live text-[11px] pt-1">
-              &bull; Foyer illuminated and waiting for guests.
-            </div>
+            )}
           </div>
         </div>
 
-        {/* NARRATIVE ACT II: THE SEATS */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-7 order-2 md:order-1 bg-surface-2 p-6 border border-border-brass rounded-sm shadow-velvet-raised">
-            <div className="flex justify-between items-center text-xs font-mono text-muted mb-4 pb-2 border-b border-border-subtle">
-              <span>SEATING ROSTER</span>
-              <span className="text-live">4 OF 8 SEATS OCCUPIED</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-surface rounded-sm border border-border-brass flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent text-accent font-bold flex items-center justify-center text-[10px]">
-                  E
+        {/* Right Column: Asymmetric Tilted Ticket Stub Graphic */}
+        <div className="flex-1 relative w-full h-[300px] sm:h-[470px] max-w-[520px] mx-auto lg:mx-0 scale-[0.68] sm:scale-100 origin-top-left sm:origin-center mb-6 sm:mb-0">
+          {/* Amber tilted back card */}
+          <div
+            className="absolute left-6 sm:left-11 top-14 sm:top-20 w-[300px] sm:w-[470px] h-[190px] sm:h-[250px] bg-[#FF9F1C] rounded-[18px] pointer-events-none"
+            style={{ transform: 'rotate(4deg)' }}
+          />
+
+          {/* Cream admission ticket stub with circular cutouts */}
+          <Link
+            href="/room/RM-4F7K"
+            className="absolute left-0 top-6 sm:top-10 w-[320px] sm:w-[490px] flex bg-[#F3E9DC] text-[#0E0B09] rounded-[18px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] cursor-pointer hover:scale-[1.02] transition-transform"
+            style={{ transform: 'rotate(-4deg)' }}
+          >
+            <div className="flex-1 p-5 sm:p-8">
+              <div className="mb-4 sm:mb-5 font-display font-semibold text-2xl sm:text-[44px] leading-[1.02] text-[#0E0B09]">
+                Friday Night Screening
+              </div>
+              <div className="flex gap-6 sm:gap-8 font-mono text-xs sm:text-[13px] text-[#0E0B09]">
+                <div>
+                  ROOM
+                  <br />
+                  <b className="text-base sm:text-xl font-bold">RM-4F7K</b>
                 </div>
                 <div>
-                  <div className="font-semibold text-text">Elena (Host)</div>
-                  <div className="font-mono text-[10px] text-accent">Projectionist</div>
-                </div>
-              </div>
-              <div className="p-3 bg-surface rounded-sm border border-border-subtle flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-surface-3 text-text font-bold flex items-center justify-center text-[10px]">
-                  M
-                </div>
-                <div>
-                  <div className="font-semibold text-text">Marcus</div>
-                  <div className="font-mono text-[10px] text-muted">Seat 2A</div>
+                  SEAT
+                  <br />
+                  <b className="text-base sm:text-xl font-bold">C-07</b>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="md:col-span-5 order-1 md:order-2 space-y-3">
-            <span className="font-mono text-xs text-accent uppercase tracking-widest block">
-              Act II &bull; The Seats
-            </span>
-            <h2 className="font-display font-bold text-3xl md:text-4xl text-text tracking-tight-display">
-              The plush virtual couch.
-            </h2>
-            <p className="text-muted text-sm leading-relaxed">
-              Spatial whisper audio makes side remarks feel like turning to your friend in the next seat. When the film gets intense, reaction ripples let you feel the room hold its breath in real time.
-            </p>
-          </div>
-        </div>
-
-        {/* NARRATIVE ACT III: LIGHTS DOWN */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-5 space-y-3">
-            <span className="font-mono text-xs text-accent uppercase tracking-widest block">
-              Act III &bull; Lights Down
-            </span>
-            <h2 className="font-display font-bold text-3xl md:text-4xl text-text tracking-tight-display">
-              Clocks lock to the millisecond.
-            </h2>
-            <p className="text-muted text-sm leading-relaxed">
-              The house lights dim and high-frequency NTP drift-compensation algorithms align every viewer&apos;s playback frame. Nobody laughs at a joke before you hear it; nobody gasps at a reveal before you see it.
-            </p>
-          </div>
-
-          <div className="md:col-span-7 bg-surface p-6 border border-border-brass rounded-sm shadow-velvet-raised font-mono text-xs space-y-3">
-            <div className="flex justify-between text-muted border-b border-border-subtle pb-2">
-              <span>SYNC TELEMETRY ENGINE</span>
-              <span className="text-live">CLOCK LOCKED</span>
+            {/* Perforation section with circular cutouts and vertical ADMIT ONE */}
+            <div className="relative w-16 sm:w-24 border-l-[3px] border-dashed border-[#0E0B09] flex items-center justify-center flex-shrink-0">
+              <span className="absolute -left-[17px] -top-[16px] w-[30px] height-[30px] h-[30px] rounded-full bg-[#0E0B09]" />
+              <span className="absolute -left-[17px] -bottom-[16px] w-[30px] height-[30px] h-[30px] rounded-full bg-[#0E0B09]" />
+              <span
+                className="font-mono text-[10px] sm:text-xs tracking-[0.3em] font-medium text-[#0E0B09]"
+                style={{ writingMode: 'vertical-rl' }}
+              >
+                ADMIT ONE
+              </span>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-center pt-1">
-              <div className="p-2.5 bg-surface-2 rounded-sm border border-border-subtle">
-                <span className="text-[10px] text-muted block">Max Drift</span>
-                <span className="text-accent font-bold text-sm">0.08 ms</span>
-              </div>
-              <div className="p-2.5 bg-surface-2 rounded-sm border border-border-subtle">
-                <span className="text-[10px] text-muted block">Frame Rate</span>
-                <span className="text-text font-bold text-sm">60.0 FPS</span>
-              </div>
-              <div className="p-2.5 bg-surface-2 rounded-sm border border-border-subtle">
-                <span className="text-[10px] text-muted block">Buffer Health</span>
-                <span className="text-live font-bold text-sm">Optimal</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          </Link>
 
-        {/* NARRATIVE ACT IV: THE MOVIE */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-7 flex justify-center order-2 md:order-1">
-            <ProjectorLens3D className="w-72 h-72 shadow-velvet-raised" />
-          </div>
-
-          <div className="md:col-span-5 order-1 md:order-2 space-y-3">
-            <span className="font-mono text-xs text-accent uppercase tracking-widest block">
-              Act IV &bull; The Movie
+          {/* Patrons inside stacked badge */}
+          <div className="absolute left-3.5 bottom-4 sm:bottom-7 flex items-center">
+            <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#E4572E] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
+              P
             </span>
-            <h2 className="font-display font-bold text-3xl md:text-4xl text-text tracking-tight-display">
-              The projector shutter opens.
-            </h2>
-            <p className="text-muted text-sm leading-relaxed">
-              YouTube, Criterion, personal Plex libraries, or streaming services via our lightweight browser extension. Pristine video and spatial sound, untouched until the credits roll.
-            </p>
+            <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#2EC4B6] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
+              S
+            </span>
+            <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#F3E9DC] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
+              A
+            </span>
+            <span className="ml-5 text-sm sm:text-[15px] text-[#A89B8C]">3 inside</span>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* 6. BOTTOM MARQUEE CHASER EDGE */}
-      <MarqueeBulbBorder count={36} />
-
-      {/* 7. FINAL CURTAIN CALL CTA */}
-      <section className="px-6 py-20 bg-surface text-center border-b border-border-brass">
-        <div className="max-w-xl mx-auto space-y-6">
-          <span className="font-mono text-xs text-accent uppercase tracking-widest block">
-            Admit One &bull; Balcony Suite Reserved
-          </span>
-          <h2 className="font-display font-bold text-4xl text-text tracking-tight-display">
-            Ready to take your seat?
-          </h2>
-          <p className="text-muted text-sm leading-relaxed">
-            Create your permanent box office pass in seconds, or join an active screening room directly with a stub code.
-          </p>
-          <div className="pt-2 flex justify-center gap-4">
-            <Link
-              href="/signup"
-              className="px-8 py-3.5 bg-accent hover:bg-[#FFAE38] text-[#0E0B09] font-display font-bold text-sm tracking-wide rounded-sm transition-all shadow-projector"
-            >
-              Get Your Ticket
-            </Link>
-            <Link
-              href="/join"
-              className="px-6 py-3.5 bg-surface-2 hover:bg-surface-3 text-text font-mono text-xs rounded-sm border border-border-brass transition-all"
-            >
-              Enter With Pass
-            </Link>
+      {/* 3 STEPS STRIP */}
+      <div className="relative flex flex-col sm:flex-row gap-8 sm:gap-12 px-6 sm:px-12 md:px-16 pt-8 sm:pt-12 mt-28 sm:mt-0">
+        <div className="flex-1 border-t border-[#3A2E26] pt-4">
+          <div className="font-mono text-xs sm:text-[13px] text-[#FF9F1C]">01</div>
+          <div className="my-1.5 font-display font-semibold text-xl sm:text-[26px] text-[#F3E9DC]">
+            Grab a seat
           </div>
         </div>
-      </section>
-
-      {/* 8. FOOTER */}
-      <footer className="px-6 py-8 bg-[#0E0B09] text-muted-dark text-xs font-mono">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2 text-muted">
-            <span className="font-display font-bold text-text">WATCH PARTY</span>
-            <span>&bull; The Private Cinema Architecture</span>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="hover:text-text transition-colors">Box Office</Link>
-            <Link href="/signup" className="hover:text-text transition-colors">Claim Ticket</Link>
-            <Link href="/join" className="hover:text-text transition-colors">Join Suite</Link>
-            <Link href="/motion-demo" className="hover:text-text transition-colors">Motion Atelier</Link>
+        <div className="flex-1 border-t border-[#3A2E26] pt-4">
+          <div className="font-mono text-xs sm:text-[13px] text-[#FF9F1C]">02</div>
+          <div className="my-1.5 font-display font-semibold text-xl sm:text-[26px] text-[#F3E9DC]">
+            Pick the picture
           </div>
         </div>
-      </footer>
+        <div className="flex-1 border-t border-[#3A2E26] pt-4">
+          <div className="font-mono text-xs sm:text-[13px] text-[#FF9F1C]">03</div>
+          <div className="my-1.5 font-display font-semibold text-xl sm:text-[26px] text-[#F3E9DC]">
+            Lights down
+          </div>
+        </div>
+      </div>
+
+      {/* 41 MARQUEE BULBS BOTTOM ACCENT */}
+      <div
+        className="hidden sm:flex px-16 h-2.5 justify-between items-center mt-8 pointer-events-none"
+        aria-hidden="true"
+      >
+        {Array.from({ length: 41 }).map((_, i) => (
+          <span
+            key={i}
+            className="w-2.5 h-2.5 rounded-full bg-[#FF9F1C] flex-shrink-0"
+          />
+        ))}
+      </div>
     </div>
   );
 }

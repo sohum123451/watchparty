@@ -13,7 +13,7 @@ export function calculatePasswordStrength(password: string): {
   color: string;
 } {
   if (!password) {
-    return { score: 0, label: 'Unexposed Film', color: '#675C51' };
+    return { score: 0, label: 'Unexposed Film', color: '#A89B8C' };
   }
 
   let score = 0;
@@ -31,7 +31,7 @@ export function calculatePasswordStrength(password: string): {
   ];
 
   const colors = [
-    '#675C51', // muted dark
+    '#A89B8C', // muted (WCAG AA 5.5:1 contrast)
     '#E4572E', // marquee red
     '#FFB347', // amber light
     '#FF9F1C', // projector amber

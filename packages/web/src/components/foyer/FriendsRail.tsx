@@ -106,7 +106,7 @@ export function FriendsRail({ className = '' }: { className?: string }) {
             className="px-2.5 py-1 bg-surface-2 hover:bg-surface-3 active:bg-[#0E0B09] border border-border-brass rounded-sm font-mono text-[10px] text-text hover:text-accent transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
             title="Generate and copy an admission pass to clipboard"
           >
-            <span>✂</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
             <span>{copiedInvite ? 'Pass Copied!' : 'Slip Ticket'}</span>
           </button>
         </div>

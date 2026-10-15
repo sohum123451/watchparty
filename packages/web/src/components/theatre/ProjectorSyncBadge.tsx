@@ -56,7 +56,7 @@ export function ProjectorSyncBadge({
         {/* Projector Icon with Shutter Beam */}
         <div className="relative flex items-center justify-center w-4 h-4">
           {/* Projector Body */}
-          <span className="text-xs">📽</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><circle cx="9" cy="12" r="3"/><path d="m16 10 5-3v10l-5-3z"/></svg>
 
           {/* Light Beam Cone Indicator */}
           <div
@@ -179,7 +179,7 @@ export function ProjectorSyncBadge({
             disabled={isResyncing}
             className="w-full py-1.5 px-3 bg-surface-2 hover:bg-surface-3 active:scale-95 text-text border border-border-brass rounded-sm text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <span>🎞</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             <span>{isResyncing ? 'Calibrating Reel...' : 'Force Resync Reel'}</span>
           </button>
         </div>
