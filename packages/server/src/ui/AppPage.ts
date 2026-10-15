@@ -1,10 +1,24 @@
-export function getAppHtml(): string {
+export interface AppPageConfig {
+  wsUrl?: string;
+  baseUrl?: string;
+}
+
+export function getAppHtml(config: AppPageConfig = {}): string {
+  const wsUrlConfig = config.wsUrl || process.env.PUBLIC_WS_URL || process.env.WS_URL || "";
+  const baseUrlConfig = config.baseUrl || process.env.BASE_URL || "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
   <title>WatchParty - Ultra-Low Latency Co-Watching</title>
+  <script id="wp-env-config">
+    window.__ENV__ = {
+      WS_URL: ${JSON.stringify(wsUrlConfig)},
+      BASE_URL: ${JSON.stringify(baseUrlConfig)}
+    };
+  </script>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#090d16">
   <meta name="mobile-web-app-capable" content="yes">
@@ -94,9 +108,11 @@ export function getAppHtml(): string {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border);
     }
-    .status-pill.connected { color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
-    .status-pill.reconnecting { color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
-    .status-pill.offline { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+    .status-pill.connected { color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.08); }
+    .status-pill.connecting { color: var(--accent); border-color: rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.08); }
+    .status-pill.reconnecting { color: var(--warning); border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.08); }
+    .status-pill.offline { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.08); }
+    .status-pill.idle { color: var(--text-dim); border-color: var(--border); background: rgba(255, 255, 255, 0.02); }
 
     .role-badge {
       font-size: 0.75rem;
@@ -564,9 +580,72 @@ export function getAppHtml(): string {
       display: none;
       margin-bottom: 0.5rem;
     }
-    .banner.error { display: block; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
-    .banner.warning { display: block; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a; }
-    .banner.success { display: block; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #a7f3d0; }
+    .banner.error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+    .banner.warning { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a; }
+    .banner.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #a7f3d0; }
+    .banner:empty { display: none !important; }
+
+    /* Empty State Hero & Room Placeholders */
+    .empty-state-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 380px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      background: radial-gradient(circle at 50% 25%, rgba(99, 102, 241, 0.15), transparent 70%), rgba(18, 24, 38, 0.4);
+      border-radius: 12px;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      margin-bottom: 0.5rem;
+    }
+    .empty-state-badge {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.3rem 0.8rem;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      margin-bottom: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .empty-state-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+    .empty-state-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .empty-state-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .empty-state-features {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+    .empty-state-feat {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
 
     /* Discovery Catalogue Styles */
     .discover-filter-bar {
@@ -2261,12 +2340,15 @@ export function getAppHtml(): string {
 <body>
   <!-- Header -->
   <header>
-    <div class="logo">
+    <div class="logo" style="cursor: pointer;" onclick="navigateHome()" title="Go to Home Screen">
       <span>🎬</span>
       <span>WatchParty</span>
     </div>
 
     <div class="header-pills">
+      <button type="button" class="btn-secondary" id="btnLeaveRoom" style="display: none; padding: 0.25rem 0.6rem; font-size: 0.75rem; min-height: 36px; touch-action: manipulation; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" onclick="leaveRoom()" title="Leave Current Room">
+        🚪 Leave
+      </button>
       <div id="homeRoomBadge" class="status-pill" style="display: none; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; font-weight: 700;">
         🏠 HOME ROOM
       </div>
@@ -2286,8 +2368,8 @@ export function getAppHtml(): string {
         🔔
       </button>
       <div id="roleBadge" class="role-badge">GUEST</div>
-      <div id="connectionStatus" class="status-pill offline">
-        <span>●</span> <span id="connStatusText">OFFLINE</span>
+      <div id="connectionStatus" class="status-pill idle">
+        <span>●</span> <span id="connStatusText">IDLE</span>
       </div>
       <span id="headerLiveMic" class="status-pill danger" style="display: none; background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); font-size: 0.72rem; font-weight: 700;" title="Microphone is live and transmitting audio">🟢 MIC LIVE</span>
       <span id="headerLiveCam" class="status-pill info" style="display: none; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); font-size: 0.72rem; font-weight: 700;" title="Camera is live and transmitting video">📹 CAM LIVE</span>
@@ -2365,9 +2447,9 @@ export function getAppHtml(): string {
       </div>
     </div>
 
-    <div id="errorMessage" class="banner error"></div>
-    <div id="bannedNotice" class="banner error">🚫 You have been banned from this room. Rejoin attempts are blocked.</div>
-    <div id="reconnectingNotice" class="banner warning">⚡ Network disconnected. Reconnecting to room...</div>
+    <div id="errorMessage" class="banner error" style="display: none;"></div>
+    <div id="bannedNotice" class="banner error" style="display: none;">🚫 You have been banned from this room. Rejoin attempts are blocked.</div>
+    <div id="reconnectingNotice" class="banner warning" style="display: none;">⚡ Network disconnected. Reconnecting to room...</div>
 
     <!-- Media Permissions Error Banner -->
     <div id="mediaPermissionBanner" class="banner error" style="display: none;">
@@ -2569,7 +2651,56 @@ export function getAppHtml(): string {
       </div>
 
       <div class="theater-card">
-        <div class="video-viewport" id="videoPlayer">
+        <!-- Proper Empty State (Home Screen / No Room or In Room with No Media) -->
+        <div id="emptyStateContainer" class="empty-state-container">
+          <!-- Home Empty State: When guest is on home screen with no room joined -->
+          <div id="homeEmptyState" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="empty-state-badge">
+              <span>🎬</span> <span>WatchParty Theater</span>
+            </div>
+            <h2 class="empty-state-title">Watch Together in Real-Time</h2>
+            <p class="empty-state-desc">
+              Synchronized video playback, crystal-clear voice chat, and ultra-low latency co-watching for movies, podcasts, and streams.
+            </p>
+            <div class="empty-state-actions">
+              <button type="button" class="btn-primary" onclick="document.getElementById('createRoomModal').classList.add('open')">
+                🚀 Create Room
+              </button>
+              <button type="button" class="btn-secondary" onclick="document.getElementById('joinRoomModal').classList.add('open')">
+                🔑 Join Room
+              </button>
+              <button type="button" class="btn-secondary" onclick="document.getElementById('movieCatalogueSection') ? document.getElementById('movieCatalogueSection').scrollIntoView({ behavior: 'smooth' }) : null">
+                🍿 Browse Catalogue
+              </button>
+            </div>
+            <div class="empty-state-features">
+              <span class="empty-state-feat"><span>⚡</span> &lt;50ms Real-Time Sync</span>
+              <span class="empty-state-feat"><span>🔒</span> E2EE Encrypted Rooms</span>
+              <span class="empty-state-feat"><span>🎙️</span> Spatial Voice &amp; Video</span>
+            </div>
+          </div>
+
+          <!-- Room Empty State: When joined to a room but no media source is loaded yet -->
+          <div id="roomEmptyState" style="display: none; flex-direction: column; align-items: center;">
+            <div class="empty-state-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7;">
+              <span>🎥</span> <span>Room Ready</span>
+            </div>
+            <h2 class="empty-state-title">No Video Loaded Yet</h2>
+            <p class="empty-state-desc">
+              This room is waiting for media. Host can add a direct stream, YouTube video, podcast feed, or pick a title from the movie catalogue below.
+            </p>
+            <div class="empty-state-actions">
+              <button type="button" class="btn-primary" onclick="openAddSourceModal()">
+                + Add Video Source
+              </button>
+              <button type="button" class="btn-secondary" onclick="document.getElementById('movieCatalogueSection') ? document.getElementById('movieCatalogueSection').scrollIntoView({ behavior: 'smooth' }) : null">
+                🍿 Pick from Catalogue
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-viewport" id="videoPlayer" style="display: none;">
           <video id="mediaVideoElement" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; display: none;"></video>
 
           <!-- Mobile Autoplay Tap-to-Resume Overlay -->
@@ -2581,7 +2712,7 @@ export function getAppHtml(): string {
           </div>
 
           <div class="video-title-overlay">
-            <span id="videoTitle">Big Buck Bunny (Demo)</span>
+            <span id="videoTitle"></span>
             <span id="e2eeBadge" class="e2ee-tag" style="display: none;">🔒 E2EE v<span id="keyVersionBadge">1</span></span>
           </div>
 
@@ -2789,7 +2920,7 @@ export function getAppHtml(): string {
           </div>
         </div>
 
-        <div class="video-controls">
+        <div class="video-controls" id="videoControlsRow" style="display: none;">
           <div class="scrubber-row">
             <span class="time-badge" id="currentTime">00:00</span>
             <input type="range" class="scrubber" id="videoTimeline" min="0" max="600" value="0">
@@ -2817,7 +2948,7 @@ export function getAppHtml(): string {
       </div>
 
       <!-- Source Guardrails & Origin Streaming Attribution Bar -->
-      <div class="source-guardrails-bar" id="sourceGuardrailsBar">
+      <div class="source-guardrails-bar" id="sourceGuardrailsBar" style="display: none;">
         <div class="sg-left">
           <span class="sg-badge origin" title="Direct origin streaming guarantee: media is never re-hosted, cached, or re-encoded on our servers.">
             🛡️ DIRECT ORIGIN STREAM
@@ -4132,6 +4263,10 @@ export function getAppHtml(): string {
     // Global Application State
     const state = {
       ws: null,
+      connectionState: 'idle', // 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'kicked' | 'banned' | 'left'
+      targetRoomCode: null,
+      roomErrors: new Map(),
+      activeError: null,
       currentUser: null,
       currentRoom: null,
       clientSeq: 1,
@@ -5418,24 +5553,229 @@ export function getAppHtml(): string {
       }
     }
 
-    // WebSocket Management & Robust Exponential Reconnect
+    // ==========================================
+    // EXPLICIT CONNECTION & ROOM STATE MACHINE
+    // ==========================================
+    // States: 'idle' (no room) -> 'connecting' -> 'connected' -> 'reconnecting' -> 'kicked' / 'banned' -> 'left'
     let reconnectAttempts = 0;
     let reconnectTimer = null;
+    let errorTimeout = null;
+
+    function renderBannersForCurrentState() {
+      const errBanner = document.getElementById('errorMessage');
+      const banBanner = document.getElementById('bannedNotice');
+      const recBanner = document.getElementById('reconnectingNotice');
+
+      if (errBanner) {
+        errBanner.style.display = 'none';
+        errBanner.innerText = '';
+      }
+      if (banBanner) {
+        banBanner.style.display = 'none';
+        banBanner.innerText = '';
+      }
+      if (recBanner) {
+        recBanner.style.display = 'none';
+      }
+
+      if (state.connectionState === 'reconnecting') {
+        if (recBanner) recBanner.style.display = 'block';
+      }
+      if (state.connectionState === 'banned') {
+        if (banBanner) {
+          const roomCode = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
+          banBanner.innerText = roomCode
+            ? '🚫 You have been banned from room ' + roomCode + '. Rejoin attempts are blocked.'
+            : '🚫 You have been banned from this room. Rejoin attempts are blocked.';
+          banBanner.style.display = 'block';
+        }
+      } else if (state.connectionState === 'kicked') {
+        if (errBanner) {
+          const roomCode = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
+          errBanner.innerText = roomCode
+            ? '⚠️ You have been removed from room ' + roomCode + ' by a moderator.'
+            : '⚠️ You have been removed from the room by a moderator.';
+          errBanner.style.display = 'block';
+        }
+      } else if (state.activeError && state.activeError.message) {
+        const targetCode = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
+        if (!state.activeError.roomCode || state.activeError.roomCode === targetCode) {
+          if (errBanner && state.activeError.message.trim()) {
+            errBanner.innerText = state.activeError.message.trim();
+            errBanner.style.display = 'block';
+          }
+        }
+      }
+    }
+
+    function transitionConnectionState(nextState, payload) {
+      state.connectionState = nextState;
+      if (payload && payload.roomCode) {
+        state.targetRoomCode = payload.roomCode;
+      }
+
+      const el = document.getElementById('connectionStatus');
+      const text = document.getElementById('connStatusText');
+      const leaveBtn = document.getElementById('btnLeaveRoom');
+      const roomCodeBadge = document.getElementById('roomCodeBadge');
+
+      if (nextState === 'idle' || nextState === 'left') {
+        state.connectionState = 'idle';
+        if (el) el.className = 'status-pill idle';
+        if (text) text.innerText = 'IDLE';
+        if (leaveBtn) leaveBtn.style.display = 'none';
+        if (roomCodeBadge) roomCodeBadge.style.display = 'none';
+      } else if (nextState === 'connecting') {
+        if (el) el.className = 'status-pill connecting';
+        if (text) text.innerText = 'CONNECTING';
+        if (leaveBtn) leaveBtn.style.display = 'none';
+      } else if (nextState === 'connected') {
+        if (el) el.className = 'status-pill connected';
+        if (text) text.innerText = 'CONNECTED';
+        if (leaveBtn) leaveBtn.style.display = 'inline-flex';
+        if (roomCodeBadge && state.currentRoom) roomCodeBadge.style.display = 'flex';
+      } else if (nextState === 'reconnecting') {
+        if (el) el.className = 'status-pill reconnecting';
+        if (text) text.innerText = 'RECONNECTING';
+        if (leaveBtn) leaveBtn.style.display = 'inline-flex';
+      } else if (nextState === 'banned') {
+        if (el) el.className = 'status-pill offline';
+        if (text) text.innerText = 'BANNED';
+        if (leaveBtn) leaveBtn.style.display = 'none';
+        if (roomCodeBadge) roomCodeBadge.style.display = 'none';
+      } else if (nextState === 'kicked') {
+        if (el) el.className = 'status-pill warning';
+        if (text) text.innerText = 'KICKED';
+        if (leaveBtn) leaveBtn.style.display = 'none';
+        if (roomCodeBadge) roomCodeBadge.style.display = 'none';
+      }
+
+      renderBannersForCurrentState();
+    }
+
+    function setConnectionStatus(status) {
+      if (status === 'connected') transitionConnectionState('connected');
+      else if (status === 'reconnecting') transitionConnectionState('reconnecting');
+      else if (status === 'offline') {
+        if (state.connectionState !== 'banned' && state.connectionState !== 'kicked') {
+          transitionConnectionState(state.currentRoom ? 'reconnecting' : 'idle');
+        }
+      }
+    }
 
     function scheduleReconnect() {
-      if (reconnectTimer) return;
-      setConnectionStatus('reconnecting');
-      const notice = document.getElementById('reconnectingNotice');
-      if (notice) notice.style.display = 'block';
+      // Reconnect loop must ONLY run when a roomId is set and the socket dropped unexpectedly; it must not run in the idle state.
+      if (!state.currentRoom || (!state.currentRoom.roomId && !state.currentRoom.roomCode)) {
+        return false;
+      }
+      if (state.connectionState === 'banned' || state.connectionState === 'kicked' || state.connectionState === 'left' || state.connectionState === 'idle') {
+        return false;
+      }
+      if (reconnectTimer) return false;
 
-      // Exponential backoff with random jitter: 1s, 1.5s, 2.25s ... capped at 8s + 0-500ms jitter
-      const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts) + Math.random() * 500, 8000);
+      transitionConnectionState('reconnecting', { roomCode: state.currentRoom.roomCode });
+
+      // Exponential backoff with full jitter:
+      // Base: 1000ms, Multiplier: 1.8x, Cap: 15000ms
+      const baseDelay = 1000;
+      const maxDelay = 15000;
+      const expBackoff = Math.min(maxDelay, baseDelay * Math.pow(1.8, Math.min(reconnectAttempts, 6)));
+      const jitter = Math.random() * (expBackoff * 0.5);
+      const delay = Math.round(expBackoff * 0.5 + jitter);
       reconnectAttempts++;
+
+      console.log(
+        '[WS] Reconnect attempt #' + reconnectAttempts + ' scheduled in ' + delay + 'ms with jitter (Backoff: ' + Math.round(expBackoff) + 'ms)'
+      );
 
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         initWebSocket();
       }, delay);
+      return true;
+    }
+
+    function updatePlayerVisibility() {
+      const homeEmpty = document.getElementById('homeEmptyState');
+      const roomEmpty = document.getElementById('roomEmptyState');
+      const emptyContainer = document.getElementById('emptyStateContainer');
+      const playerEl = document.getElementById('videoPlayer');
+      const controlsEl = document.getElementById('videoControlsRow');
+      const guardrailsBar = document.getElementById('sourceGuardrailsBar');
+
+      const hasRoom = Boolean(state.currentRoom && (state.currentRoom.roomId || state.currentRoom.roomCode));
+      const hasMedia = hasRoom && Boolean(
+        (state.playback && (state.playback.sourceRef || state.playback.videoId)) ||
+        (state.podcast && state.podcast.currentEpisode) ||
+        (state.cobrowse && state.cobrowse.url)
+      );
+
+      if (!hasRoom) {
+        // Idle / Home Screen State: show home empty hero, hide player and controls
+        if (emptyContainer) emptyContainer.style.display = 'flex';
+        if (homeEmpty) homeEmpty.style.display = 'flex';
+        if (roomEmpty) roomEmpty.style.display = 'none';
+        if (playerEl) playerEl.style.display = 'none';
+        if (controlsEl) controlsEl.style.display = 'none';
+        if (guardrailsBar) guardrailsBar.style.display = 'none';
+      } else if (!hasMedia) {
+        // In Room, but waiting for video source
+        if (emptyContainer) emptyContainer.style.display = 'flex';
+        if (homeEmpty) homeEmpty.style.display = 'none';
+        if (roomEmpty) roomEmpty.style.display = 'flex';
+        if (playerEl) playerEl.style.display = 'none';
+        if (controlsEl) controlsEl.style.display = 'none';
+        if (guardrailsBar) guardrailsBar.style.display = 'none';
+      } else {
+        // In Room with media loaded: show player and controls
+        if (emptyContainer) emptyContainer.style.display = 'none';
+        if (homeEmpty) homeEmpty.style.display = 'none';
+        if (roomEmpty) roomEmpty.style.display = 'none';
+        if (playerEl) playerEl.style.display = 'block';
+        if (controlsEl) controlsEl.style.display = 'block';
+        if (guardrailsBar) guardrailsBar.style.display = 'flex';
+      }
+    }
+
+    function leaveRoom() {
+      if (typeof leaveVoiceChannel === 'function') {
+        try { leaveVoiceChannel(); } catch (e) {}
+      }
+      if (state.screenShare && state.screenShare.isSharing) {
+        try { stopScreenSharing(); } catch (e) {}
+      }
+      clearRoomErrors();
+      state.currentRoom = null;
+      state.targetRoomCode = null;
+      state.lastKnownVersion = 0;
+      state.reconnectToken = null;
+      try { sessionStorage.removeItem('wp_active_room'); } catch (e) {}
+
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      reconnectAttempts = 0;
+
+      transitionConnectionState('left');
+      transitionConnectionState('idle');
+      updatePlayerVisibility();
+
+      const homeBadge = document.getElementById('homeRoomBadge');
+      if (homeBadge) homeBadge.style.display = 'none';
+      const btnRules = document.getElementById('btnRoomRules');
+      if (btnRules) btnRules.style.display = 'none';
+      const btnSettings = document.getElementById('btnRoomSettings');
+      if (btnSettings) btnSettings.style.display = 'none';
+      const quickShareBtn = document.getElementById('btnQuickShareHeader');
+      if (quickShareBtn) quickShareBtn.style.display = 'none';
+      const voiceBar = document.getElementById('voiceVideoControlBar');
+      if (voiceBar) voiceBar.style.display = 'none';
+    }
+
+    function navigateHome() {
+      leaveRoom();
+      try { window.history.pushState({}, '', '/'); } catch (e) {}
     }
 
     function handleMobileResumeClick() {
@@ -5462,23 +5802,36 @@ export function getAppHtml(): string {
         reconnectTimer = null;
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      let wsUrl = protocol + '//' + window.location.host;
-      if (state.accessToken) {
-        wsUrl += '?token=' + encodeURIComponent(state.accessToken);
+      // Resolve WebSocket URL: prefer window.__ENV__.WS_URL if set, otherwise derive dynamically from window.location
+      const envWsUrl = (window.__ENV__ && window.__ENV__.WS_URL) ? window.__ENV__.WS_URL.trim() : '';
+      let wsBaseUrl = envWsUrl;
+      if (!wsBaseUrl) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsBaseUrl = protocol + '//' + window.location.host;
       }
+      // Ensure wss:// is used when page is loaded over https:
+      if (window.location.protocol === 'https:' && wsBaseUrl.startsWith('ws://')) {
+        wsBaseUrl = wsBaseUrl.replace('ws://', 'wss://');
+      }
+
+      let wsUrl = wsBaseUrl;
+      if (state.accessToken) {
+        const sep = wsUrl.includes('?') ? '&' : '?';
+        wsUrl += sep + 'token=' + encodeURIComponent(state.accessToken);
+      }
+
+      console.log('[WS] Connecting to WebSocket endpoint:', wsUrl);
       const ws = new WebSocket(wsUrl);
       state.ws = ws;
 
       ws.onopen = () => {
         reconnectAttempts = 0;
-        setConnectionStatus('connected');
-        const notice = document.getElementById('reconnectingNotice');
-        if (notice) notice.style.display = 'none';
+        console.log('[WS] Connected successfully to:', wsUrl);
         startClockSync();
 
         // If we were previously in a room, perform seamless session reconnect
         if (state.currentRoom && state.reconnectToken) {
+          transitionConnectionState('connected', { roomCode: state.currentRoom.roomCode });
           sendWsMessage({
             type: 'ROOM_JOIN',
             payload: {
@@ -5489,6 +5842,20 @@ export function getAppHtml(): string {
               e2eePublicKey: state.e2ee.exportedPublicKey,
             }
           });
+        } else if (state.targetRoomCode) {
+          transitionConnectionState('connecting', { roomCode: state.targetRoomCode });
+          let savedName = 'Guest';
+          try { savedName = localStorage.getItem('wp_username') || (state.currentUser ? state.currentUser.displayName : 'Guest'); } catch (e) {}
+          sendWsMessage({
+            type: 'ROOM_JOIN',
+            payload: {
+              roomCode: state.targetRoomCode,
+              userName: savedName,
+              e2eePublicKey: state.e2ee ? state.e2ee.exportedPublicKey : undefined,
+            }
+          });
+        } else {
+          transitionConnectionState('idle');
         }
       };
 
@@ -5497,19 +5864,36 @@ export function getAppHtml(): string {
           const msg = JSON.parse(event.data);
           await handleServerMessage(msg);
         } catch (e) {
-          console.error("WS Parse Error:", e);
+          console.error("[WS] Parse Error:", e);
         }
       };
 
+      ws.onerror = (err) => {
+        console.error('[WS] Socket error encountered on URL:', wsUrl, err);
+      };
+
       ws.onclose = (event) => {
-        setConnectionStatus('offline');
+        console.warn(
+          '[WS] Connection closed / failed. URL:', wsUrl,
+          'CloseCode:', event.code,
+          'Reason:', event.reason || '(none)',
+          'WasClean:', event.wasClean
+        );
+        const code = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
         if (event.code === 4006) {
-          document.getElementById('bannedNotice').style.display = 'block';
           state.currentRoom = null;
           try { sessionStorage.removeItem('wp_active_room'); } catch {}
-        } else {
-          // Reconnect on any unexpected closure (server restart, container redeploy, network drop)
+          transitionConnectionState('banned', { roomCode: code });
+          updatePlayerVisibility();
+        } else if (event.code === 4007) {
+          state.currentRoom = null;
+          try { sessionStorage.removeItem('wp_active_room'); } catch {}
+          transitionConnectionState('kicked', { roomCode: code });
+          updatePlayerVisibility();
+        } else if (state.currentRoom && (state.currentRoom.roomId || state.currentRoom.roomCode) && state.connectionState !== 'left' && state.connectionState !== 'idle') {
           scheduleReconnect();
+        } else {
+          transitionConnectionState('idle');
         }
       };
     }
@@ -5527,8 +5911,11 @@ export function getAppHtml(): string {
     });
 
     window.addEventListener('offline', () => {
-      setConnectionStatus('offline');
-      document.getElementById('reconnectingNotice').style.display = 'block';
+      if (state.currentRoom && (state.currentRoom.roomId || state.currentRoom.roomCode)) {
+        transitionConnectionState('reconnecting', { roomCode: state.currentRoom.roomCode });
+      } else {
+        transitionConnectionState('idle');
+      }
       if (state.ws) {
         try { state.ws.close(); } catch {}
       }
@@ -5537,12 +5924,10 @@ export function getAppHtml(): string {
     // Screen lock, backgrounded tabs & mobile app switcher recovery
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        // Tab is foregrounded again or phone was unlocked
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
           reconnectAttempts = 0;
           initWebSocket();
         } else if (state.currentRoom) {
-          // Re-sync clock and playback state within seconds
           startClockSync();
           if (state.playback && state.playback.isPlaying) {
             updatePlaybackUI(state.playback);
@@ -5550,13 +5935,6 @@ export function getAppHtml(): string {
         }
       }
     });
-
-    function setConnectionStatus(status) {
-      const el = document.getElementById('connectionStatus');
-      const text = document.getElementById('connStatusText');
-      el.className = 'status-pill ' + status;
-      text.innerText = status.toUpperCase();
-    }
 
     function sendWsMessage(msg) {
       msg.clientSeq = state.clientSeq++;
@@ -5575,10 +5953,23 @@ export function getAppHtml(): string {
         case 'ROOM_SNAPSHOT': {
           const snap = msg.payload;
           state.currentRoom = snap;
+          state.targetRoomCode = snap.roomCode;
           state.reconnectToken = snap.reconnectToken;
           state.role = snap.selfRole || 'member';
           state.isHost = snap.hostId === snap.selfUserId;
           state.screenShare.isApproved = state.isHost || (snap.approvedScreenSharers && snap.approvedScreenSharers.includes(snap.selfUserId));
+
+          try {
+            sessionStorage.setItem('wp_active_room', JSON.stringify({
+              roomCode: snap.roomCode,
+              reconnectToken: snap.reconnectToken,
+              version: snap.version,
+            }));
+          } catch (e) {}
+
+          clearRoomErrors(snap.roomCode);
+          transitionConnectionState('connected', { roomCode: snap.roomCode });
+          updatePlayerVisibility();
 
           document.getElementById('roomCodeBadge').style.display = 'flex';
           document.getElementById('roomCodeVal').innerText = snap.roomCode;
@@ -5888,9 +6279,44 @@ export function getAppHtml(): string {
         }
 
         case 'ROOM_KICKED': {
-          showError("You have been removed from the room.");
+          const roomCode = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
           if (typeof leaveVoiceChannel === 'function') leaveVoiceChannel();
           state.currentRoom = null;
+          try { sessionStorage.removeItem('wp_active_room'); } catch (e) {}
+          transitionConnectionState('kicked', { roomCode, reason: msg.payload?.reason });
+          updatePlayerVisibility();
+          break;
+        }
+
+        case 'ROOM_MEMBER_BANNED': {
+          if (state.currentRoom) {
+            if (msg.payload && msg.payload.targetUserId === state.currentRoom.selfUserId) {
+              const roomCode = state.currentRoom.roomCode;
+              if (typeof leaveVoiceChannel === 'function') leaveVoiceChannel();
+              state.currentRoom = null;
+              try { sessionStorage.removeItem('wp_active_room'); } catch (e) {}
+              transitionConnectionState('banned', { roomCode });
+              updatePlayerVisibility();
+            } else if (state.isHost) {
+              sendWsMessage({ type: 'ROOM_GET_BANS' });
+            }
+          }
+          break;
+        }
+
+        case 'ROOM_MEMBER_UNBANNED': {
+          if (state.currentRoom && state.currentRoom.bans) {
+            state.currentRoom.bans = state.currentRoom.bans.filter(b => b.userId !== msg.payload.identifier && b.id !== msg.payload.identifier && b.accountId !== msg.payload.identifier);
+            renderMembers(state.members || []);
+          }
+          break;
+        }
+
+        case 'ROOM_BANS_LIST': {
+          if (state.currentRoom) {
+            state.currentRoom.bans = msg.payload.bans || [];
+            renderMembers(state.members || []);
+          }
           break;
         }
 
@@ -6021,31 +6447,67 @@ export function getAppHtml(): string {
         }
 
         case 'ERROR': {
-          showError(msg.message);
+          const roomCode = (state.currentRoom && state.currentRoom.roomCode) || state.targetRoomCode;
+          if (msg.code === 'USER_BANNED') {
+            state.currentRoom = null;
+            try { sessionStorage.removeItem('wp_active_room'); } catch (e) {}
+            transitionConnectionState('banned', { roomCode });
+            updatePlayerVisibility();
+          } else if (msg.code === 'USER_KICKED') {
+            state.currentRoom = null;
+            try { sessionStorage.removeItem('wp_active_room'); } catch (e) {}
+            transitionConnectionState('kicked', { roomCode, reason: msg.message });
+            updatePlayerVisibility();
+          } else {
+            showError(msg.message, roomCode);
+          }
           break;
         }
       }
     }
 
-    function showError(err) {
-      const banner = document.getElementById('errorMessage');
-      banner.innerText = err;
-      banner.style.display = 'block';
+    function showError(err, roomCode) {
+      if (!err) return;
+      const msg = typeof err === 'string' ? err.trim() : (err.message ? String(err.message).trim() : '');
+      if (!msg) return; // Strict guard: never render error banner with empty message!
+
+      const targetCode = roomCode || (state.currentRoom ? state.currentRoom.roomCode : state.targetRoomCode);
+      state.activeError = { message: msg, roomCode: targetCode, timestamp: Date.now() };
+      if (targetCode) {
+        state.roomErrors.set(targetCode, { message: msg, timestamp: Date.now() });
+      }
+      renderBannersForCurrentState();
+
       const createErr = document.getElementById('createRoomError');
       if (createErr) {
-        createErr.innerText = err;
+        createErr.innerText = msg;
         createErr.style.display = 'block';
       }
       const joinErr = document.getElementById('joinRoomError');
       if (joinErr) {
-        joinErr.innerText = err;
+        joinErr.innerText = msg;
         joinErr.style.display = 'block';
       }
-      setTimeout(() => {
-        banner.style.display = 'none';
+      if (errorTimeout) clearTimeout(errorTimeout);
+      errorTimeout = setTimeout(() => {
+        state.activeError = null;
+        renderBannersForCurrentState();
         if (createErr) createErr.style.display = 'none';
         if (joinErr) joinErr.style.display = 'none';
       }, 8000);
+    }
+
+    function clearRoomErrors(roomCode) {
+      if (roomCode) {
+        state.roomErrors.delete(roomCode);
+        if (state.activeError && state.activeError.roomCode === roomCode) {
+          state.activeError = null;
+        }
+      } else {
+        state.roomErrors.clear();
+        state.activeError = null;
+      }
+      renderBannersForCurrentState();
     }
 
     // Synchronized Video Scrubber & Playback
@@ -6182,6 +6644,7 @@ export function getAppHtml(): string {
       }
 
       updateScrubberTime(pb.positionMs);
+      updatePlayerVisibility();
     }
 
     function updateScrubberTime(ms) {
@@ -7359,7 +7822,32 @@ export function getAppHtml(): string {
         div.innerHTML = '<div><strong style="color: #fff;">' + escapeHtml(m.userName) + '</strong><span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem;">(' + m.role + ')</span>' + shareBadge + muteBadge + voiceBadge + '</div><div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap;">' + actionsHtml + '</div>';
         list.appendChild(div);
       });
+
+      if ((state.isHost || state.role === 'moderator') && state.currentRoom && state.currentRoom.bans && state.currentRoom.bans.length > 0) {
+        const banHeader = document.createElement('div');
+        banHeader.style.cssText = 'margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.8rem; font-weight: 700; color: #f87171; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;';
+        banHeader.innerHTML = '<span>Banned Members (' + state.currentRoom.bans.length + ')</span>';
+        list.appendChild(banHeader);
+
+        state.currentRoom.bans.forEach(b => {
+          const bDiv = document.createElement('div');
+          bDiv.className = 'member-item banned';
+          bDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px dashed rgba(239, 68, 68, 0.2);';
+          bDiv.innerHTML = '<div><strong style="color: #fca5a5;">' + escapeHtml(b.userName) + '</strong>' +
+            (b.reason ? '<span style="font-size: 0.72rem; color: var(--text-dim); margin-left: 0.4rem;">(' + escapeHtml(b.reason) + ')</span>' : '') +
+            '</div>' +
+            '<button type="button" class="btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #34d399; border-color: rgba(16, 185, 129, 0.4);" onclick="unbanMember(\'' + (b.userId || b.id) + '\')">Unban</button>';
+          list.appendChild(bDiv);
+        });
+      }
     }
+
+    window.unbanMember = (targetIdentifier) => {
+      sendWsMessage({
+        type: 'ROOM_UNBAN',
+        payload: { targetIdentifier }
+      });
+    };
 
     window.kickMember = (userId) => {
       sendWsMessage({
@@ -7462,6 +7950,13 @@ export function getAppHtml(): string {
       const rulesEl = document.getElementById('createRoomRules');
       const roomRules = rulesEl && rulesEl.value.trim() ? rulesEl.value.trim() : undefined;
 
+      clearRoomErrors();
+      transitionConnectionState('connecting');
+
+      if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        initWebSocket();
+      }
+
       sendWsMessage({
         type: 'ROOM_CREATE',
         payload: {
@@ -7483,17 +7978,36 @@ export function getAppHtml(): string {
       const rawName = overrideUserName || (state.currentUser ? state.currentUser.displayName : (nameInput ? nameInput.value : ''));
       const userName = (rawName && rawName.trim()) ? rawName.trim() : 'Guest';
 
+      if (!roomCode) {
+        showError('Please enter a room code');
+        return;
+      }
+
+      // If joining a different room or new room, clear previous room errors
+      if (state.targetRoomCode && state.targetRoomCode !== roomCode) {
+        clearRoomErrors(state.targetRoomCode);
+      }
+      clearRoomErrors(roomCode);
+      state.targetRoomCode = roomCode;
+
       try {
         localStorage.setItem('wp_username', userName);
       } catch (e) {}
 
-      sendWsMessage({
-        type: 'ROOM_JOIN',
-        payload: {
-          roomCode,
-          userName,
-        }
-      });
+      transitionConnectionState('connecting', { roomCode });
+
+      if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        initWebSocket();
+      } else {
+        sendWsMessage({
+          type: 'ROOM_JOIN',
+          payload: {
+            roomCode,
+            userName,
+            e2eePublicKey: state.e2ee ? state.e2ee.exportedPublicKey : undefined,
+          }
+        });
+      }
     }
 
     // Friends Service
@@ -10409,6 +10923,12 @@ export function getAppHtml(): string {
         }
       } catch (e) {}
 
+      // If no room is active, initialize in idle state and ensure empty player state is shown
+      if (!state.currentRoom) {
+        transitionConnectionState('idle');
+        updatePlayerVisibility();
+      }
+
       initWebSocket();
       initVoiceVideo();
 
@@ -10445,6 +10965,39 @@ export function getAppHtml(): string {
         }
       }
     });
+
+    window.runConnectionDiagnostics = async function() {
+      console.log('=== WatchParty WebSocket & Network Diagnostics ===');
+      console.log('Window Location:', window.location.href);
+      console.log('Configured WS_URL:', (window.__ENV__ && window.__ENV__.WS_URL) || '(dynamic location.host)');
+      console.log('Active Connection State:', state.connectionState);
+      console.log('Socket ReadyState:', state.ws ? ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][state.ws.readyState] : 'NONE');
+
+      try {
+        const start = performance.now();
+        const res = await fetch('/health');
+        const elapsed = Math.round(performance.now() - start);
+        const data = await res.json();
+        console.log('✅ /health endpoint reachable in ' + elapsed + 'ms:', data);
+      } catch (err) {
+        console.error('❌ /health probe failed:', err);
+      }
+      console.log('==================================================');
+    };
+
+    // Expose helpers on window for manual verification & debugging
+    window.transitionConnectionState = transitionConnectionState;
+    window.renderBannersForCurrentState = renderBannersForCurrentState;
+    window.updatePlayerVisibility = updatePlayerVisibility;
+    window.showError = showError;
+    window.clearRoomErrors = clearRoomErrors;
+    window.leaveRoom = leaveRoom;
+    window.navigateHome = navigateHome;
+    window.submitJoinRoom = submitJoinRoom;
+    window.submitCreateRoom = submitCreateRoom;
+    window.scheduleReconnect = scheduleReconnect;
+    window.runConnectionDiagnostics = window.runConnectionDiagnostics;
+    window.appState = state;
   </script>
 </body>
 </html>

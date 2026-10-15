@@ -14,6 +14,7 @@ import { AuthService } from "../auth/services/AuthService.js";
 import { TokenSecurity } from "../auth/crypto/tokens.js";
 import { FriendsService } from "../friends/services/FriendsService.js";
 import { auditLogger } from "../security/AuditLogger.js";
+import { defaultSecurityMiddleware } from "../security/headers.js";
 import { MetricsCollector } from "../metrics/MetricsCollector.js";
 import type { RedisRoomAdapter } from "../redis/RedisRoomAdapter.js";
 import { Logger, rootLogger } from "../utils/logger.js";
@@ -72,6 +73,17 @@ export class WebSocketGateway {
   }
 
   private async handleConnection(ws: WebSocket, req?: IncomingMessage): Promise<void> {
+    // Validate handshake origin if provided (browser WebSocket client)
+    if (req && req.headers.origin) {
+      const origin = req.headers.origin;
+      const host = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+      if (!defaultSecurityMiddleware.isOriginAllowed(origin, host)) {
+        this.logger.warn(`[WS_SECURITY] Rejected WebSocket connection from untrusted origin: ${origin} (Host: ${host})`);
+        ws.close(WS_CLOSE_CODES.POLICY_VIOLATION || 1008, "Untrusted Origin");
+        return;
+      }
+    }
+
     const conn = new Connection(ws);
     this.connections.add(conn);
     this.metricsCollector?.incrementConnectedSockets();
@@ -846,13 +858,27 @@ export class WebSocketGateway {
             message.clientSeq,
             message.payload.targetUserId,
             message.payload.banType,
-            message.payload.reason
+            message.payload.reason,
+            message.payload.durationSeconds
           );
           if (res.success) {
             conn.sendAck(message.clientSeq, res.version);
           } else {
             conn.sendError(res.code, res.message, message.clientSeq);
           }
+          break;
+        }
+
+        case "ROOM_GET_BANS": {
+          if (!room.hasPermission(conn.userId!, "ban")) {
+            conn.sendError(ERROR_CODES.PERMISSION_DENIED, "You do not have permission to list bans", message.clientSeq);
+            break;
+          }
+          conn.sendAck(message.clientSeq, room.version);
+          conn.send({
+            type: "ROOM_BANS_LIST",
+            payload: { bans: room.getBans() },
+          });
           break;
         }
 

@@ -8,3 +8,4 @@ export * from "./utils/sanitize.js";
 export * from "./utils/profanity.js";
 export * from "./discovery/index.js";
 export * from "./e2ee/E2eeCrypto.js";
+export * from "./design/tokens.js";

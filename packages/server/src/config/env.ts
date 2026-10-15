@@ -11,8 +11,10 @@ const DEFAULT_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    HOST: z.string().default("0.0.0.0"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     BASE_URL: z.string().url().default("http://localhost:3001"),
+    PUBLIC_WS_URL: z.string().optional(),
     NODE_ID: z.string().default("node_main"),
     DATA_DIR: z.string().default("./.data"),
 

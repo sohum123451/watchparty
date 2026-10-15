@@ -115,6 +115,7 @@ export interface RoomBan {
   reason?: string;
   bannedBy: string;
   bannedAt: number;
+  expiresAt?: number | null;
 }
 
 export interface MuteRecord {
@@ -413,6 +414,7 @@ export interface RoomSnapshot {
   videoDisabledForRoom?: boolean;
   voiceParticipants?: ParticipantMediaState[];
   recordingState?: RoomRecordingState;
+  bans?: RoomBan[];
 }
 
 export interface RoomEvent {

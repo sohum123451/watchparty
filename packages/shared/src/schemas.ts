@@ -369,7 +369,14 @@ export const RoomBanMemberSchema = z.object({
     targetUserId: z.string().trim().min(1),
     banType: z.enum(["account", "session", "both"]).default("both"),
     reason: z.string().trim().max(200).optional(),
+    durationSeconds: z.number().int().positive().optional(),
   }),
+});
+
+export const RoomGetBansSchema = z.object({
+  type: z.literal("ROOM_GET_BANS"),
+  clientSeq: z.number().int().positive(),
+  payload: z.object({}).optional(),
 });
 
 export const RoomUnbanSchema = z.object({
@@ -838,6 +845,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   ChatSendEncryptedSchema,
   RoomKickMemberSchema,
   RoomBanMemberSchema,
+  RoomGetBansSchema,
   RoomUnbanSchema,
   RoomMuteMemberSchema,
   RoomUnmuteMemberSchema,
@@ -927,6 +935,12 @@ export type ServerMessage =
       payload: {
         userId: string;
         newHostId?: string;
+      };
+    }
+  | {
+      type: "ROOM_BANS_LIST";
+      payload: {
+        bans: RoomBan[];
       };
     }
   | {

@@ -1,0 +1,123 @@
+/**
+ * Watch Party Design System Tokens CSS
+ * Concept: "The Private Cinema"
+ */
+
+export function getTokensCss(): string {
+  return `/**
+ * Watch Party Design System Tokens
+ * Concept: "The Private Cinema"
+ * Warm, dark, tactile movie-theatre lobby: projector light, velvet, marquee bulbs, film grain, ticket stubs.
+ */
+
+:root {
+  /* -------------------------------------------------------------------------
+   * COLOUR TOKENS (Dark Theme Only)
+   * Strictly adhere to the <10% accent budget rule.
+   * Zero purple-to-blue gradients anywhere.
+   * ------------------------------------------------------------------------- */
+  --bg: #0E0B09;              /* Warm black (cinema darkness, lobby gloom) */
+  --surface: #1A1512;         /* Primary surface (deep velvet, wood paneling) */
+  --surface-2: #261E19;       /* Secondary surface (elevated box office cards, faders) */
+  --surface-3: #362B24;       /* Tertiary surface (hover highlights, subtle borders) */
+  
+  --text: #F3E9DC;             /* Warm cream (projector screen reflection, ticket paper) */
+  --muted: #A89B8C;            /* Muted oyster / aged parchment (captions, subheads) */
+  --muted-dark: #675C51;       /* Deep muted (hairlines, timestamps, inactive icons) */
+
+  --accent: #FF9F1C;           /* Projector amber (spotlight cone, focus, primary CTA) */
+  --accent-2: #E4572E;         /* Marquee red (incandescent glow, recording, live broadcast) */
+  
+  --live: #2EC4B6;             /* Presence / online (vintage teal cathode light) */
+  --danger: #D62839;           /* Error / ejection / invalid stub (warning red) */
+
+  /* Borders & Trim */
+  --border-subtle: rgba(243, 233, 220, 0.08);
+  --border-brass: rgba(243, 233, 220, 0.16);
+  --border-brass-bright: rgba(255, 159, 28, 0.45);
+  --border-marquee: rgba(228, 87, 46, 0.4);
+
+  /* Glows & Lighting */
+  --accent-glow: rgba(255, 159, 28, 0.22);
+  --accent-2-glow: rgba(228, 87, 46, 0.25);
+  --live-glow: rgba(46, 196, 182, 0.32);
+  --danger-glow: rgba(214, 40, 57, 0.32);
+
+  /* -------------------------------------------------------------------------
+   * TYPOGRAPHY
+   * Display: Fraunces (serif editorial warmth) & Bricolage Grotesque
+   * UI: DM Sans & Instrument Sans (clarity & humanist warmth)
+   * Monospace: JetBrains Mono (stubs, timecodes, room tokens)
+   * ------------------------------------------------------------------------- */
+  --font-display: 'Fraunces', 'Bricolage Grotesque', Georgia, serif;
+  --font-ui: 'DM Sans', 'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Type Scale */
+  --text-xs: 0.75rem;          /* 12px */
+  --text-sm: 0.875rem;         /* 14px */
+  --text-base: 1rem;           /* 16px */
+  --text-lg: 1.125rem;         /* 18px */
+  --text-xl: 1.25rem;          /* 20px */
+  --text-2xl: 1.5rem;          /* 24px */
+  --text-3xl: 1.875rem;        /* 30px */
+  --text-4xl: 2.25rem;         /* 36px */
+  --text-5xl: 3rem;            /* 48px */
+  --text-6xl: 3.75rem;         /* 60px */
+
+  /* Tight Display Tracking for Headings */
+  --tracking-tight-display: -0.035em;
+  --tracking-tight-ui: -0.01em;
+  --tracking-wide-code: 0.06em;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-chat: 1.625;       /* Generous line-height for chat messages */
+
+  /* -------------------------------------------------------------------------
+   * SPACING SCALE
+   * ------------------------------------------------------------------------- */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* -------------------------------------------------------------------------
+   * CORNER RADII (Tactile, architectural, NOT generic pillowy rounded-2xl)
+   * ------------------------------------------------------------------------- */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-ticket: 8px;
+  --radius-pill: 9999px;
+
+  /* -------------------------------------------------------------------------
+   * DEPTH & SHADOWS (Velvet & Projector)
+   * ------------------------------------------------------------------------- */
+  --shadow-inset-velvet: inset 0 2px 4px rgba(0, 0, 0, 0.7);
+  --shadow-surface: 0 4px 16px -2px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-projector: 0 0 35px -8px rgba(255, 159, 28, 0.28), 0 0 70px -15px rgba(255, 159, 28, 0.12);
+  --shadow-marquee: 0 0 16px rgba(228, 87, 46, 0.4), 0 0 30px rgba(228, 87, 46, 0.18);
+  --shadow-cathode: 0 0 10px rgba(46, 196, 182, 0.55), 0 0 20px rgba(46, 196, 182, 0.2);
+
+  /* -------------------------------------------------------------------------
+   * ATMOSPHERE & TEXTURE
+   * ------------------------------------------------------------------------- */
+  --film-grain-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+  --projector-beam: radial-gradient(ellipse 75% 55% at 50% -20%, rgba(255, 159, 28, 0.12) 0%, rgba(255, 159, 28, 0.02) 50%, transparent 75%);
+}
+`;
+}

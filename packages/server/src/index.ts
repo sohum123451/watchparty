@@ -30,6 +30,8 @@ import { MetricsCollector } from "./metrics/MetricsCollector.js";
 import { getGrafanaDashboardJson, getDashboardHtml } from "./metrics/DashboardPage.js";
 import { Logger, requestLoggingMiddleware } from "./utils/logger.js";
 import { getAppHtml } from "./ui/AppPage.js";
+import { getDesignSystemHtml } from "./ui/DesignSystemPage.js";
+import { getTokensCss } from "./ui/tokensCss.js";
 import { getManifestJson, getServiceWorkerJs, getOfflineHtml, getAppIconSvg } from "./ui/pwa.js";
 import { SourceResolver, SecurityError } from "./services/SourceResolver.js";
 import { defaultUrlSafetyChecker } from "./services/UrlSafetyChecker.js";
@@ -53,6 +55,7 @@ import { handleMediaRoute } from "./media/mediaRoutes.js";
 // 1. Strict Fail-Fast Environment Validation
 const env = validateEnv();
 const PORT = env.PORT;
+const HOST = env.HOST;
 const BASE_URL = env.BASE_URL;
 const NODE_ID = env.NODE_ID;
 
@@ -169,9 +172,23 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
   // 3. Health & Readiness Observability Probes
-  if (url.pathname === "/health" && req.method === "GET") {
+  if ((url.pathname === "/health" || url.pathname === "/healthz") && (req.method === "GET" || req.method === "HEAD")) {
     metricsCollector.setActiveRooms(roomManager.getActiveRoomCount());
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+    });
+    if (req.method === "HEAD") {
+      res.end();
+      return;
+    }
+    const proto = req.headers["x-forwarded-proto"] === "https" ? "wss" : (req.headers["x-forwarded-proto"] === "http" ? "ws" : undefined);
+    const host = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const computedWsUrl = proto && host ? `${proto}://${host}` : undefined;
+    const publicWs = env.PUBLIC_WS_URL || computedWsUrl || (BASE_URL ? BASE_URL.replace(/^http/, "ws") : `ws://localhost:${PORT}`);
+
     res.end(
       JSON.stringify({
         status: "healthy",
@@ -179,6 +196,10 @@ const server = http.createServer(async (req, res) => {
         uptimeSeconds: Math.floor(process.uptime()),
         activeRooms: roomManager.getActiveRoomCount(),
         connectedSockets: metricsCollector.getSummaryJson().connectedSockets,
+        wsEndpoint: publicWs,
+        protocol: req.headers["x-forwarded-proto"] || "http",
+        host: host || "localhost",
+        clientIp: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress,
         timestamp: Date.now(),
       })
     );
@@ -590,10 +611,30 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 14c. Design System Atelier & Tokens Routes
+  if (url.pathname === "/design" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(getDesignSystemHtml());
+    return;
+  }
+
+  if (url.pathname === "/tokens.css" && req.method === "GET") {
+    res.writeHead(200, {
+      "Content-Type": "text/css; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    });
+    res.end(getTokensCss());
+    return;
+  }
+
   // 15. Web Application SPA Route
   if ((url.pathname === "/" || url.pathname === "/app" || url.pathname.startsWith("/join/")) && req.method === "GET") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(getAppHtml());
+    const proto = req.headers["x-forwarded-proto"] === "https" ? "wss" : (req.headers["x-forwarded-proto"] === "http" ? "ws" : undefined);
+    const host = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const computedWsUrl = proto && host ? `${proto}://${host}` : undefined;
+    const publicWs = env.PUBLIC_WS_URL || computedWsUrl || (BASE_URL ? BASE_URL.replace(/^http/, "ws") : "");
+    res.end(getAppHtml({ wsUrl: publicWs, baseUrl: BASE_URL }));
     return;
   }
 
@@ -655,10 +696,11 @@ async function bootstrap() {
     logger.info(`Restored ${restored} active rooms from durable snapshots`);
   }
 
-  server.listen(PORT, () => {
-    logger.info(`[WatchParty Server] Running on ${BASE_URL} (WebSocket ws://localhost:${PORT})`, {
+  server.listen(PORT, HOST, () => {
+    logger.info(`[WatchParty Server] Running on ${BASE_URL} (Bound to ${HOST}:${PORT})`, {
       nodeId: NODE_ID,
       port: PORT,
+      host: HOST,
       restoredRooms: restored,
     });
   });

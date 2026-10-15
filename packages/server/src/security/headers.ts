@@ -9,6 +9,7 @@ export interface SecurityOptions {
 
 export class SecurityMiddleware {
   private allowedOrigins: Set<string>;
+  private allowedWildcardPatterns: RegExp[];
   private enforceHttps: boolean;
   private allowInlineScripts: boolean;
 
@@ -24,15 +25,67 @@ export class SecurityMiddleware {
       ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
       : [];
 
+    if (process.env.BASE_URL) {
+      try {
+        const u = new URL(process.env.BASE_URL);
+        if (u.origin) envOrigins.push(u.origin);
+      } catch {}
+    }
+
     const finalOrigins = options.allowedOrigins || [...defaultOrigins, ...envOrigins];
-    this.allowedOrigins = new Set(finalOrigins);
+    this.allowedOrigins = new Set();
+    this.allowedWildcardPatterns = [];
+
+    for (const origin of finalOrigins) {
+      if (origin === "*") {
+        this.allowedOrigins.add("*");
+      } else if (origin.includes("*")) {
+        // Support both domain wildcards (e.g. *.example.com) and full URL wildcards (https://*.example.com)
+        const withProtocol = origin.startsWith("http://") || origin.startsWith("https://")
+          ? origin
+          : "^https?:\\/\\/" + origin.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") + "(:\\d+)?$";
+        const regexStr = withProtocol.startsWith("^")
+          ? withProtocol
+          : "^" + withProtocol.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$";
+        this.allowedWildcardPatterns.push(new RegExp(regexStr, "i"));
+      } else {
+        this.allowedOrigins.add(origin);
+      }
+    }
+
     this.enforceHttps = options.enforceHttps ?? process.env.NODE_ENV === "production";
     this.allowInlineScripts = options.allowInlineScripts ?? true;
   }
 
-  public isOriginAllowed(origin?: string): boolean {
+  public isOriginAllowed(origin?: string, hostHeader?: string): boolean {
     if (!origin) return false;
-    return this.allowedOrigins.has(origin);
+    if (this.allowedOrigins.has("*") || this.allowedOrigins.has(origin)) {
+      return true;
+    }
+
+    // Allow if origin matches host header (same-host origin)
+    if (hostHeader) {
+      try {
+        const originUrl = new URL(origin);
+        if (originUrl.host.toLowerCase() === hostHeader.toLowerCase()) {
+          return true;
+        }
+      } catch {}
+    }
+
+    // Dynamic DNS domains used for cloud deployments and testing (*.sslip.io, *.nip.io)
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      if (hostname.endsWith(".sslip.io") || hostname.endsWith(".nip.io")) {
+        return true;
+      }
+    } catch {}
+
+    for (const pattern of this.allowedWildcardPatterns) {
+      if (pattern.test(origin)) return true;
+    }
+
+    return false;
   }
 
   public handleRequest(req: http.IncomingMessage, res: http.ServerResponse): boolean {
@@ -67,7 +120,8 @@ export class SecurityMiddleware {
 
     // 4. Strict CORS Configuration (Allowlist validation, credentials support)
     const requestOrigin = req.headers.origin;
-    if (requestOrigin && this.isOriginAllowed(requestOrigin)) {
+    const hostHeader = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    if (requestOrigin && this.isOriginAllowed(requestOrigin, hostHeader)) {
       res.setHeader("Access-Control-Allow-Origin", requestOrigin);
       res.setHeader("Access-Control-Allow-Credentials", "true");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

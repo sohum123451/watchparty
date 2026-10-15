@@ -32,7 +32,7 @@
   }
 
   # Transparent reverse proxy to Node.js application container with WebSockets support
-  reverse_proxy app:3001 {
+  reverse_proxy {$APP_UPSTREAM:app:3001} {
     # Header passing for real client IP and TLS detection
     header_up Host {host}
     header_up X-Real-IP {remote_host}
@@ -42,10 +42,11 @@
     # Health check for seamless failover / restarts
     health_uri /health
     health_interval 10s
-    health_timeout 2s
+    health_timeout 5s
 
-    # Generous buffer for large playlist / chat history payloads
+    # Unbuffered streaming for real-time WebSocket frames & large media payloads
     buffer_requests false
+    flush_interval -1
   }
 
   # Access logging in structured JSON format

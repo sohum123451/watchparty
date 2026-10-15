@@ -413,6 +413,7 @@ export class Room {
     e2eePublicKey?: string,
     options?: {
       accountId?: string;
+      sessionToken?: string;
       role?: Role;
       password?: string;
       inviteToken?: string;
@@ -422,9 +423,17 @@ export class Room {
     | { success: true; member: RoomMemberInternal; sessionToken: string }
     | { success: false; code: string; message: string; waiting?: boolean; requestId?: string } {
     this.cancelIdleTimer();
+    this.cleanExpiredBans();
 
-    // 1. Check if user or account is banned
+    // 1. Check if user or account or session is banned
     if (options?.accountId && this.bannedAccountIds.has(options.accountId)) {
+      return {
+        success: false,
+        code: ERROR_CODES.USER_BANNED,
+        message: "You are banned from this room",
+      };
+    }
+    if (options?.sessionToken && this.bannedSessionTokens.has(options.sessionToken)) {
       return {
         success: false,
         code: ERROR_CODES.USER_BANNED,
@@ -677,6 +686,8 @@ export class Room {
   ):
     | { success: true; member: RoomMemberInternal; missedEvents: RoomEvent[] | null }
     | { success: false; code: string; message: string } {
+    this.cleanExpiredBans();
+
     // 1. Ban evasion check by session token
     if (this.bannedSessionTokens.has(sessionToken)) {
       return {
@@ -766,7 +777,20 @@ export class Room {
   // REAL-TIME VOICE & VIDEO CHAT METHODS
   // ==========================================
 
+  public cleanExpiredBans(): void {
+    const now = Date.now();
+    for (const [id, ban] of this.bans.entries()) {
+      if (ban.expiresAt && ban.expiresAt <= now) {
+        this.bannedUserIds.delete(ban.userId);
+        if (ban.accountId) this.bannedAccountIds.delete(ban.accountId);
+        if (ban.sessionToken) this.bannedSessionTokens.delete(ban.sessionToken);
+        this.bans.delete(id);
+      }
+    }
+  }
+
   public isBanned(userId: string, accountId?: string): boolean {
+    this.cleanExpiredBans();
     if (this.bannedUserIds.has(userId)) return true;
     if (accountId && this.bannedAccountIds.has(accountId)) return true;
     return false;
@@ -1335,7 +1359,8 @@ export class Room {
     clientSeq: number,
     targetUserId: string,
     banType: "account" | "session" | "both" | string = "both",
-    reason?: string
+    reason?: string,
+    durationSeconds?: number
   ): { success: true; version: number } | { success: false; code: string; message: string } {
     if (!this.hasPermission(actorId, "ban")) {
       return {
@@ -1379,6 +1404,8 @@ export class Room {
       resolvedBanType = banType;
     }
 
+    const expiresAt = durationSeconds && durationSeconds > 0 ? Date.now() + durationSeconds * 1000 : null;
+
     // Ban tracking
     this.bannedUserIds.add(targetUserId);
     if ((resolvedBanType === "session" || resolvedBanType === "both") && target.sessionToken) {
@@ -1397,6 +1424,7 @@ export class Room {
       reason: resolvedReason,
       bannedBy: actorId,
       bannedAt: Date.now(),
+      expiresAt,
     };
     this.bans.set(banRecord.id, banRecord);
 
@@ -2265,6 +2293,7 @@ export class Room {
   }
 
   public getBans(): RoomBan[] {
+    this.cleanExpiredBans();
     return Array.from(this.bans.values());
   }
 
@@ -4531,6 +4560,7 @@ export class Room {
       recordingState: this.getRecordingState(),
       members: Array.from(this.members.values()).map((m) => this.toPublicMember(m)),
       waitingRequests: isStaff ? Array.from(this.waitingRequests.values()) : undefined,
+      bans: isStaff ? this.getBans() : undefined,
       playback: { ...this.playback },
       playlist: [...this.playlist],
       activePoll: this.activePoll ? this.getPollSummary(this.activePoll, selfUserId) : null,

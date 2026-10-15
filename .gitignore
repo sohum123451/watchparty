@@ -5,6 +5,7 @@ package-lock.json.bak
 # Build outputs
 dist/
 build/
+.next/
 *.tsbuildinfo
 
 # Environment & Secrets (NEVER commit secrets!)
