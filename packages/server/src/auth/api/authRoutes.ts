@@ -35,10 +35,17 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 }
 
 function sendJson(res: http.ServerResponse, statusCode: number, data: any, headers: Record<string, string> = {}): void {
+  const origin = (res as any)._reqOrigin || "*";
+  const corsHeaders: Record<string, string> = {};
+  if (origin && origin !== "*") {
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
+    corsHeaders["Access-Control-Allow-Credentials"] = "true";
+  } else {
+    corsHeaders["Access-Control-Allow-Origin"] = "*";
+  }
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Credentials": "true",
+    ...corsHeaders,
     ...headers,
   });
   res.end(JSON.stringify(data));
@@ -66,21 +73,35 @@ export async function handleAuthRoute(
     return false;
   }
 
+  (res as any)._reqOrigin = req.headers.origin;
   const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "127.0.0.1";
   const deviceInfo = (req.headers["user-agent"] as string) || "Unknown client";
 
   if (req.method === "OPTIONS") {
+    const origin = req.headers.origin || "*";
     res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+      ...(origin !== "*" ? { "Access-Control-Allow-Credentials": "true" } : {}),
     });
     res.end();
     return true;
   }
 
   try {
+    // 0. POST /api/auth/guest
+    if (url.pathname === "/api/auth/guest" && req.method === "POST") {
+      const body = await parseBody(req);
+      const name = (body.displayName as string)?.trim() || `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
+      const guestId = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      sendJson(res, 200, {
+        user: { id: guestId, displayName: name, isGuest: true },
+        accessToken: null,
+      });
+      return true;
+    }
+
     // 1. POST /api/auth/signup (or /api/auth/register)
     if ((url.pathname === "/api/auth/signup" || url.pathname === "/api/auth/register") && req.method === "POST") {
       const body = await parseBody(req);

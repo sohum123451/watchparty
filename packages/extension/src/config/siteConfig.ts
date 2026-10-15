@@ -21,6 +21,16 @@ export const SITE_RULES: SiteRule[] = [
     isSPA: true
   },
   {
+    id: "hotstar",
+    name: "JioHotstar",
+    hostPatterns: [/^(.+\.)?hotstar\.com$/i],
+    videoSelector: ".shaka-video, video",
+    containerSelector: ".player-container, .shaka-video-container, body",
+    titleSelector: ".watch-title, h1",
+    seekToleranceMs: 200,
+    isSPA: true
+  },
+  {
     id: "disneyplus",
     name: "Disney+",
     hostPatterns: [/^(.+\.)?disneyplus\.com$/i],

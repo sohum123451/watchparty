@@ -1,18 +1,17 @@
 'use client';
 
 /**
- * Cinema Foyer / Lobby Page
+ * Cinema Foyer / Lobby Page — Phase 2 & 3
  * Matched to approved Private Cinema reference frame.
  * Tokens: bg #0E0B09, surface #1A1512, surface-2 #261E19, line #3A2E26, text #F3E9DC, muted #A89B8C, amber #FF9F1C, red #E4572E, teal #2EC4B6.
  * Typography: Fraunces (display), DM Sans (UI), JetBrains Mono (codes).
  * Flat colour blocks, no gradients, no emojis.
- *
- * Phase 1/3: Friends and catalogue fetched from server. Empty states shown when not yet available.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +20,16 @@ interface FriendPresence {
   displayName: string;
   status: 'watching' | 'listening' | 'online' | 'offline';
   roomCode?: string;
+}
+
+interface ActiveRoom {
+  roomId: string;
+  roomCode: string;
+  roomName: string;
+  hostUserName: string;
+  memberCount: number;
+  mediaTitle: string;
+  controlMode: string;
 }
 
 interface CatalogueItem {
@@ -60,12 +69,25 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function LobbyPage() {
   const router = useRouter();
+  const { user, loading: authLoading, signOut, authHeader } = useAuth();
+
+  // Route protection: lobby requires a session or guest identity
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login?next=/lobby');
+    }
+  }, [user, authLoading, router]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState('');
   const [showJoinInput, setShowJoinInput] = useState(false);
+
+  // Active rooms from server
+  const [activeRooms, setActiveRooms] = useState<ActiveRoom[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
 
   // Friends presence from server
   const [friends, setFriends] = useState<FriendPresence[]>([]);
@@ -82,36 +104,62 @@ export default function LobbyPage() {
   const [friendInput, setFriendInput] = useState('');
   const [addFriendLoading, setAddFriendLoading] = useState(false);
   const [addFriendError, setAddFriendError] = useState<string | null>(null);
+  const [activeFriendActionMenu, setActiveFriendActionMenu] = useState<string | null>(null);
 
   // ── Data fetching ────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    let cancelled = false;
+  const refreshFriends = useCallback(() => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = authHeader();
+    if (token) headers['Authorization'] = token;
+
     setFriendsLoading(true);
     setFriendsError(null);
 
-    fetch('/api/friends')
+    fetch('/api/friends', { headers, credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
-        if (!cancelled) {
-          setFriends(
-            (data.friends || []).map((f: any) => ({
-              userId: f.userId,
-              displayName: f.displayName || f.userName || 'Unknown',
-              status: f.presence?.status || 'offline',
-              roomCode: f.presence?.roomCode,
-            }))
-          );
-        }
+        setFriends(
+          (data.friends || []).map((f: any) => ({
+            userId: f.userId,
+            displayName: f.displayName || f.userName || 'Unknown',
+            status: f.presence?.status || 'offline',
+            roomCode: f.presence?.roomCode,
+          }))
+        );
       })
       .catch(() => {
-        if (!cancelled) setFriendsError('Could not load friends.');
+        setFriendsError('Could not load friends.');
       })
-      .finally(() => { if (!cancelled) setFriendsLoading(false); });
+      .finally(() => {
+        setFriendsLoading(false);
+      });
+  }, [authHeader]);
+
+  useEffect(() => {
+    refreshFriends();
+  }, [refreshFriends]);
+
+  // Fetch active rooms
+  useEffect(() => {
+    let cancelled = false;
+    setRoomsLoading(true);
+    fetch('/api/rooms')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (!cancelled && data.rooms) {
+          setActiveRooms(data.rooms);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setRoomsLoading(false);
+      });
 
     return () => { cancelled = true; };
   }, []);
 
+  // Fetch movie catalogue
   useEffect(() => {
     let cancelled = false;
     setCatalogueLoading(true);
@@ -148,9 +196,9 @@ export default function LobbyPage() {
     try {
       setIsCreating(true);
       const storedName =
+        user?.displayName ||
         (typeof window !== 'undefined' && localStorage.getItem('watchparty_username')) ||
         `Host-${Math.floor(100 + Math.random() * 900)}`;
-      if (typeof window !== 'undefined') localStorage.setItem('watchparty_username', storedName);
 
       const body: Record<string, any> = { hostUserName: storedName };
       if (filmId) body.initialVideoId = filmId;
@@ -180,12 +228,27 @@ export default function LobbyPage() {
     }
   };
 
-  const handleJoinWithCode = (e: React.FormEvent) => {
+  const handleJoinWithCode = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = joinCode.trim().toUpperCase();
     if (!code) { setJoinError('Enter a code'); return; }
     setJoinError(null);
-    router.push(`/room/${encodeURIComponent(code)}`);
+
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        setJoinError('Room not found.');
+        return;
+      }
+      const data = await res.json();
+      if (data.exists) {
+        router.push(`/room/${encodeURIComponent(code)}`);
+      } else {
+        setJoinError('Room not found.');
+      }
+    } catch {
+      setJoinError('Room not found.');
+    }
   };
 
   const handleAddFriend = async () => {
@@ -194,31 +257,58 @@ export default function LobbyPage() {
     setAddFriendLoading(true);
     setAddFriendError(null);
     try {
-      const res = await fetch('/api/friends', {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = authHeader();
+      if (token) headers['Authorization'] = token;
+
+      const res = await fetch('/api/friends/request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ username: val }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData?.error || 'User not found');
       }
-      const data = await res.json();
-      // Optimistically add to list
-      if (data.friend) {
-        setFriends((prev) => {
-          const exists = prev.some((f) => f.userId === data.friend.userId);
-          if (exists) return prev;
-          return [...prev, { userId: data.friend.userId, displayName: data.friend.displayName || val, status: 'offline' }];
-        });
-      }
       setFriendModalOpen(false);
       setFriendInput('');
+      refreshFriends();
     } catch (err: any) {
       setAddFriendError(err.message || 'Failed to add friend');
     } finally {
       setAddFriendLoading(false);
     }
+  };
+
+  const handleRemoveFriend = async (friendId: string) => {
+    try {
+      const headers: Record<string, string> = {};
+      const token = authHeader();
+      if (token) headers['Authorization'] = token;
+      await fetch(`/api/friends/${encodeURIComponent(friendId)}`, {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      });
+      setFriends((prev) => prev.filter((f) => f.userId !== friendId));
+      setActiveFriendActionMenu(null);
+    } catch {}
+  };
+
+  const handleBlockFriend = async (friendId: string) => {
+    try {
+      const headers: Record<string, string> = {};
+      const token = authHeader();
+      if (token) headers['Authorization'] = token;
+      await fetch(`/api/friends/${encodeURIComponent(friendId)}/block`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+      });
+      setFriends((prev) => prev.filter((f) => f.userId !== friendId));
+      setActiveFriendActionMenu(null);
+    } catch {}
   };
 
   // ── Filtering ────────────────────────────────────────────────────────────────
@@ -227,7 +317,7 @@ export default function LobbyPage() {
   const filteredCatalogue = (searchQuery.trim()
     ? freeCatalogue.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
     : freeCatalogue
-  ).slice(0, 6); // max 6 tiles
+  ).slice(0, 6);
 
   const featuredFilm = catalogue.find((c) => c.isFree) || null;
   const stackFilms = catalogue.filter((c) => c.isFree && c !== featuredFilm).slice(0, 2);
@@ -248,7 +338,12 @@ export default function LobbyPage() {
 
         {/* Search */}
         <form
-          onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim().length >= 4) router.push(`/room/${encodeURIComponent(searchQuery.trim().toUpperCase())}`); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (searchQuery.trim().length >= 4) {
+              router.push(`/room/${encodeURIComponent(searchQuery.trim().toUpperCase())}`);
+            }
+          }}
           className="flex-1 max-w-md mx-0 sm:mx-6 flex gap-2"
         >
           <input
@@ -269,7 +364,7 @@ export default function LobbyPage() {
           )}
         </form>
 
-        {/* Create + Avatar */}
+        {/* Create + Avatar + Sign out */}
         <div className="flex items-center justify-end gap-3 text-[15px] text-[#A89B8C]">
           <button
             type="button"
@@ -279,13 +374,31 @@ export default function LobbyPage() {
           >
             {isCreating ? 'Creating…' : '+ Create room'}
           </button>
-          <Link
-            href="/login"
-            className="w-10 h-10 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] hover:brightness-105 transition-all flex-shrink-0"
-            title="Profile"
-          >
-            A
-          </Link>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span
+                className="w-10 h-10 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] flex-shrink-0 select-none"
+                title={user.displayName}
+              >
+                {avatarInitial(user.displayName)}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="text-xs font-mono text-[#A89B8C] hover:text-[#E4572E] cursor-pointer bg-transparent border-none ml-1 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login?next=/lobby"
+              className="text-sm font-medium text-[#A89B8C] hover:text-[#FF9F1C] transition-colors"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </header>
 
@@ -300,6 +413,54 @@ export default function LobbyPage() {
       <div className="flex flex-col lg:flex-row gap-8 px-6 sm:px-12 md:px-16 pt-3">
         {/* Left Column */}
         <div className="flex-1 min-w-0">
+          {/* ACTIVE SCREENINGS / LIVE ROOMS (if any active rooms on server) */}
+          {activeRooms.length > 0 && (
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2EC4B6] animate-pulse" />
+                <h2 className="m-0 font-display font-semibold text-2xl text-[#F3E9DC]">Active auditories</h2>
+                <span className="font-mono text-xs bg-[#261E19] text-[#2EC4B6] border border-[#2EC4B6]/30 px-2.5 py-0.5 rounded-full">
+                  {activeRooms.length} live
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {activeRooms.map((r) => (
+                  <div
+                    key={r.roomCode}
+                    onClick={() => router.push(`/room/${r.roomCode}`)}
+                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#FF9F1C] p-5 rounded-xl flex items-center justify-between cursor-pointer transition-all group"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display font-semibold text-lg text-[#F3E9DC] group-hover:text-[#FF9F1C] truncate">
+                          {r.roomName || `Room #${r.roomCode}`}
+                        </h3>
+                        <span className="font-mono text-xs bg-[#0E0B09] text-[#A89B8C] px-2 py-0.5 rounded">
+                          {r.roomCode}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#A89B8C] mt-1 flex items-center gap-3">
+                        <span>Host: {r.hostUserName}</span>
+                        <span>•</span>
+                        <span>{r.memberCount} seated</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/room/${r.roomCode}`);
+                      }}
+                      className="bg-[#261E19] group-hover:bg-[#FF9F1C] text-[#FF9F1C] group-hover:text-[#0E0B09] font-bold text-xs px-4 py-2 rounded-full transition-all border border-[#3A2E26] cursor-pointer"
+                    >
+                      Enter
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* NOW SHOWING */}
           <div className="flex items-baseline gap-4">
             <h2 className="m-0 font-display font-semibold text-3xl sm:text-[44px] text-[#F3E9DC]">Now showing</h2>
@@ -371,7 +532,7 @@ export default function LobbyPage() {
             </div>
           )}
 
-          {/* TONIGHT'S PICKS */}
+          {/* FREE LIBRARY PICKS */}
           <div className="flex items-center gap-5 mt-10 mb-4">
             <h2 className="m-0 font-display font-semibold text-2xl sm:text-[34px] text-[#F3E9DC]">Free library</h2>
             <span className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm px-4 py-2 rounded-full">Free</span>
@@ -385,7 +546,7 @@ export default function LobbyPage() {
             </div>
           ) : filteredCatalogue.length === 0 ? (
             <div className="text-sm text-[#A89B8C] font-mono">
-              {searchQuery ? 'No results.' : 'No free films yet.'}
+              {searchQuery ? 'No results found.' : 'No free films yet.'}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -409,7 +570,7 @@ export default function LobbyPage() {
         </div>
 
         {/* RIGHT SIDEBAR: Friends */}
-        <aside className="w-full lg:w-[300px] box-border self-start bg-[#1A1512] rounded-[20px] p-6 flex-shrink-0">
+        <aside className="w-full lg:w-[320px] box-border self-start bg-[#1A1512] rounded-[20px] p-6 flex-shrink-0">
           <div className="flex items-baseline justify-between mb-4">
             <h3 className="m-0 font-display font-semibold text-2xl sm:text-[28px] text-[#F3E9DC]">Friends</h3>
           </div>
@@ -433,7 +594,7 @@ export default function LobbyPage() {
                   Go
                 </button>
               </form>
-              {joinError && <span className="text-xs font-mono text-[#E4572E] mt-1 block">{joinError}</span>}
+              {joinError && <span className="text-xs font-mono text-[#E4572E] mt-1.5 block">{joinError}</span>}
             </div>
           ) : (
             <button
@@ -460,11 +621,13 @@ export default function LobbyPage() {
                 const dotColor = STATUS_COLOR[friend.status] || '#5A4A3E';
                 const ac = accentForIndex(i);
                 const statusLabel = friend.status.charAt(0).toUpperCase() + friend.status.slice(1);
+                const isMenuOpen = activeFriendActionMenu === friend.userId;
+
                 return (
-                  <div key={friend.userId} className="flex items-center gap-3 py-3.5 border-t border-[#2A211B] first:border-t-0">
+                  <div key={friend.userId} className="relative flex items-center gap-3 py-3.5 border-t border-[#2A211B] first:border-t-0">
                     <span
                       style={{ backgroundColor: ac.bg, color: ac.text }}
-                      className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                      className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 select-none"
                     >
                       {avatarInitial(friend.displayName)}
                       <span
@@ -472,7 +635,7 @@ export default function LobbyPage() {
                         className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-[#1A1512]"
                       />
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="font-bold text-[15px] text-[#F3E9DC] truncate">{friend.displayName}</div>
                       <div className="text-[13px] text-[#A89B8C]">{statusLabel}</div>
                     </div>
@@ -480,10 +643,37 @@ export default function LobbyPage() {
                       <button
                         type="button"
                         onClick={() => router.push(`/room/${friend.roomCode}`)}
-                        className="ml-auto text-xs font-mono text-[#FF9F1C] underline cursor-pointer bg-transparent border-none flex-shrink-0"
+                        className="text-xs font-mono text-[#FF9F1C] underline cursor-pointer bg-transparent border-none flex-shrink-0"
                       >
                         Join
                       </button>
+                    )}
+                    {/* More actions dropdown button */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveFriendActionMenu(isMenuOpen ? null : friend.userId)}
+                      className="text-[#A89B8C] hover:text-[#F3E9DC] text-xs bg-transparent border-none cursor-pointer px-1"
+                    >
+                      ⋮
+                    </button>
+
+                    {isMenuOpen && (
+                      <div className="absolute right-0 top-12 z-20 bg-[#261E19] border border-[#3A2E26] rounded-lg p-1.5 shadow-lg flex flex-col gap-1 min-w-[120px]">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFriend(friend.userId)}
+                          className="text-left text-xs text-[#A89B8C] hover:text-[#E4572E] px-2.5 py-1.5 rounded hover:bg-[#1A1512] bg-transparent border-none cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBlockFriend(friend.userId)}
+                          className="text-left text-xs text-[#A89B8C] hover:text-[#E4572E] px-2.5 py-1.5 rounded hover:bg-[#1A1512] bg-transparent border-none cursor-pointer"
+                        >
+                          Block
+                        </button>
+                      </div>
                     )}
                   </div>
                 );

@@ -24,6 +24,7 @@
   ],
   "host_permissions": [
     "https://*.netflix.com/*",
+    "https://*.hotstar.com/*",
     "https://*.disneyplus.com/*",
     "https://*.amazon.com/*",
     "https://*.primevideo.com/*",
@@ -41,6 +42,7 @@
     {
       "matches": [
         "https://*.netflix.com/*",
+        "https://*.hotstar.com/*",
         "https://*.disneyplus.com/*",
         "https://*.amazon.com/*",
         "https://*.primevideo.com/*",

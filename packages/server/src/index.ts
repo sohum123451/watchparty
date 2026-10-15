@@ -403,6 +403,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ exists: false, error: "Room not found" }));
       return;
     }
+    const host = room.getMember(room.hostId);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(
       JSON.stringify({
@@ -411,8 +412,33 @@ const server = http.createServer(async (req, res) => {
         roomCode: room.roomCode,
         roomName: room.roomName,
         controlMode: room.controlMode,
+        memberCount: room.getMemberCount(),
+        hostUserName: host?.userName || "Host",
+        mediaTitle: room.playback?.title || "",
       })
     );
+    return;
+  }
+
+  // 11b. Public Rooms List for Lobby
+  if (url.pathname === "/api/rooms" && req.method === "GET") {
+    const rooms = roomManager
+      .getAllRooms()
+      .filter((r) => r.roomType !== "private" && !r.isHomeRoom)
+      .map((r) => {
+        const host = r.getMember(r.hostId);
+        return {
+          roomId: r.roomId,
+          roomCode: r.roomCode,
+          roomName: r.roomName,
+          hostUserName: host?.userName || "Host",
+          memberCount: r.getMemberCount(),
+          mediaTitle: r.playback?.title || "Screening",
+          controlMode: r.controlMode,
+        };
+      });
+    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ rooms }));
     return;
   }
 
@@ -459,6 +485,27 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(400, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: err?.message || "Failed to create room" }));
     }
+    return;
+  }
+
+
+  // Catalogue endpoint (free films for lobby)
+  if (url.pathname === "/api/catalogue" && req.method === "GET") {
+    const isFreeOnly = url.searchParams.get("free") !== "false";
+    const films = MOVIE_CATALOGUE
+      .filter((m: any) => !isFreeOnly || m.isFree !== false)
+      .map((m: any) => ({
+        id: m.id,
+        title: m.title,
+        isFree: m.isFree !== false,
+        accentColor: m.accentColor,
+        textColor: m.textColor,
+        description: m.description,
+        runtime: m.runtime,
+        genre: m.genre,
+      }));
+    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ films }));
     return;
   }
 

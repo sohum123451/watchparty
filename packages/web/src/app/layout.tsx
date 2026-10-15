@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Fraunces, Bricolage_Grotesque, DM_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { PageTransition } from '@/motion/PageTransition';
+import { AuthProvider } from '@/lib/AuthContext';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -58,9 +59,11 @@ export default function RootLayout({
         <div className="projector-beam-ambient" />
 
         {/* Global Page Transition Wrapper */}
-        <PageTransition className="relative z-10 min-h-screen flex flex-col">
-          {children}
-        </PageTransition>
+        <AuthProvider>
+          <PageTransition className="relative z-10 min-h-screen flex flex-col">
+            {children}
+          </PageTransition>
+        </AuthProvider>
         <Script src="https://accounts.google.com/gsi/client" strategy="lazyOnload" />
       </body>
     </html>

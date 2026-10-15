@@ -12,9 +12,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function LandingPage() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -76,13 +78,34 @@ export default function LandingPage() {
           <span className="w-3.5 h-3.5 rounded-full bg-[#FF9F1C] inline-block flex-shrink-0" />
           <span>Watch Party</span>
         </Link>
-        <div className="flex items-center gap-6 sm:gap-8 text-base">
+        <div className="flex items-center gap-4 sm:gap-6 text-base">
           <Link
             href="/lobby"
-            className="text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors font-medium"
+            className="text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors font-medium text-sm sm:text-base"
           >
             Lobby
           </Link>
+          {user ? (
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-full bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs flex items-center justify-center">
+                {(user.displayName || '?')[0].toUpperCase()}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="text-xs font-mono text-[#A89B8C] hover:text-[#E4572E] transition-colors cursor-pointer bg-transparent border-none"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="text-[#A89B8C] hover:text-[#FF9F1C] transition-colors font-medium text-sm sm:text-base"
+            >
+              Sign in
+            </Link>
+          )}
           <button
             type="button"
             onClick={handleCreateRoom}

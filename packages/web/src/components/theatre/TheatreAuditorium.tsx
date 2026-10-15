@@ -20,9 +20,12 @@ import {
   MemberPublicInfo,
   ReactionBurst,
 } from '@watchparty/shared';
+import { useRouter } from 'next/navigation';
 import { ReactionParticleOverlay } from './ReactionParticleOverlay';
 import { TheatreSidebar, ChatEntry } from './TheatreSidebar';
+import { SourcePickerSheet, SourceSelection } from './SourcePickerSheet';
 import { useRoomSocket } from '@/lib/useRoomSocket';
+import { useAuth } from '@/lib/AuthContext';
 
 export interface TheatreAuditoriumProps {
   roomCode: string;
@@ -52,21 +55,25 @@ export function TheatreAuditorium({
   roomCode,
   className = '',
 }: TheatreAuditoriumProps) {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+
+  // Route protection: require session or guest identity
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?next=/room/${encodeURIComponent(roomCode)}`);
+    }
+  }, [user, authLoading, roomCode, router]);
+
   // ── Auth / identity ────────────────────────────────────────────────────────
   const [selfUserId, setSelfUserId] = useState('');
   const [roomTitle, setRoomTitle] = useState('');
   const [members, setMembers] = useState<MemberPublicInfo[]>([]);
   const [speakingMap, setSpeakingMap] = useState<Record<string, boolean>>({});
 
-  // Resolve username once on mount
-  const [userName] = useState<string>(() => {
-    if (typeof window === 'undefined') return `Patron-${Math.floor(100 + Math.random() * 900)}`;
-    const stored = localStorage.getItem('watchparty_username');
-    if (stored) return stored;
-    const generated = `Patron-${Math.floor(100 + Math.random() * 900)}`;
-    localStorage.setItem('watchparty_username', generated);
-    return generated;
-  });
+  // Resolve username
+  const userName = user?.displayName || (typeof window !== 'undefined' ? localStorage.getItem('watchparty_username') || `Patron-${Math.floor(100 + Math.random() * 900)}` : 'Patron');
 
   const authToken =
     typeof window !== 'undefined'
@@ -378,6 +385,36 @@ export function TheatreAuditorium({
     send({ type: 'POLL_CREATE', clientSeq: nextSeq(), payload: { question, options, durationSeconds: 120 } });
   };
 
+  const handleSelectSource = (src: SourceSelection) => {
+    setVideoTitle(src.title);
+    if (src.sourceRef) setVideoSrc(src.sourceRef);
+    send({
+      type: 'PLAYBACK_CHANGE_VIDEO',
+      clientSeq: nextSeq(),
+      payload: {
+        videoId: src.videoId,
+        provider: src.provider || 'html5',
+        sourceRef: src.sourceRef,
+        title: src.title,
+        autoPlay: true,
+      },
+    });
+  };
+
+  const handleAddToQueueFromPicker = (src: SourceSelection) => {
+    send({
+      type: 'PLAYLIST_ADD',
+      clientSeq: nextSeq(),
+      payload: {
+        videoId: src.videoId,
+        provider: src.provider || 'html5',
+        sourceRef: src.sourceRef,
+        title: src.title,
+        durationMs: 0,
+      },
+    });
+  };
+
   const handleCopyInvite = () => {
     if (typeof navigator !== 'undefined') {
       navigator.clipboard?.writeText(window.location.href);
@@ -536,6 +573,16 @@ export function TheatreAuditorium({
                 ? 'In sync'
                 : `${driftMs > 0 ? '+' : ''}${driftMs}ms`}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowSourcePicker(true)}
+            className="flex items-center gap-1.5 font-ui text-xs sm:text-[13px] bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-[#F3E9DC] px-3.5 py-2 rounded-full cursor-pointer transition-colors"
+            title="Add media source"
+          >
+            <span className="text-[#FF9F1C] font-bold">＋</span>
+            <span>Source</span>
           </button>
 
           <button
@@ -699,6 +746,15 @@ export function TheatreAuditorium({
           onCreatePoll={handleCreatePoll}
         />
       </div>
+
+      {/* Source Picker Sheet */}
+      <SourcePickerSheet
+        isOpen={showSourcePicker}
+        onClose={() => setShowSourcePicker(false)}
+        onSelectSource={handleSelectSource}
+        onAddToQueue={handleAddToQueueFromPicker}
+        roomCode={roomCode}
+      />
     </div>
   );
 }

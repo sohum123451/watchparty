@@ -40,18 +40,13 @@ export function RoomInviteTicket({
   const seamFlashRef = useRef<HTMLDivElement>(null);
 
   const room = {
-    roomCode: invite?.roomCode || 'CRITERION-70MM',
-    roomName: invite?.roomName || 'Balcony Suite 4',
-    hostName: invite?.hostName || 'Elena Rostova',
-    mediaTitle: invite?.mediaTitle || 'Stalker (1979) — Tarkovsky 4K Restored',
-    mediaFormat: invite?.mediaFormat || '35mm Gate • E2EE Sealed',
-    memberCount: invite?.memberCount || 4,
-    members: invite?.members || [
-      { id: '1', name: 'Elena', avatar: 'E', isHost: true },
-      { id: '2', name: 'Marcus', avatar: 'M' },
-      { id: '3', name: 'Sophia', avatar: 'S' },
-      { id: '4', name: 'David', avatar: 'D' },
-    ],
+    roomCode: invite?.roomCode || '',
+    roomName: invite?.roomName || (invite?.roomCode ? `Room ${invite.roomCode}` : 'Screening Room'),
+    hostName: invite?.hostName || 'Host',
+    mediaTitle: invite?.mediaTitle || 'Synchronized Screening',
+    mediaFormat: invite?.mediaFormat || 'Direct Master',
+    memberCount: invite?.memberCount || 1,
+    members: invite?.members || [],
   };
 
   const handleTearAndJoin = () => {

@@ -1,422 +1,311 @@
 'use client';
 
 /**
- * Ticket Booth Authentication Component (Login & Signup)
- * Styled like a physical cinema Box Office window.
- * - The email field is an authentic ticket stub with perforated seam.
- * - Password strength is visualized via a 35mm film-strip meter.
- * - Errors trigger an inline anime.js tactile shake animation.
- * - The submit action is "Get your ticket".
+ * TicketBoothAuth – Phase 2
+ * Real auth using AuthContext: signIn, signUp, continueAsGuest.
+ * Screens: sign-in, sign-up, forgot-password, verify-email.
+ * No mock data. Inline errors. Loading states. No explainer paragraphs.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PasswordFilmStripMeter, calculatePasswordStrength } from './PasswordFilmStripMeter';
 import { FilmReelSpinner } from './FilmReelSpinner';
-import { useAnime } from '@/motion/useAnime';
-import { MotionDurations, MotionEasings } from '@/motion/tokens';
+import { useAuth } from '@/lib/AuthContext';
 import { animate } from 'animejs';
+import { MotionDurations, MotionEasings } from '@/motion/tokens';
+
+export type AuthMode = 'login' | 'signup' | 'forgot' | 'verify';
 
 export interface TicketBoothAuthProps {
-  initialMode?: 'login' | 'signup';
+  initialMode?: AuthMode;
 }
 
-export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps) {
+const API = process.env.NEXT_PUBLIC_API_URL || '';
+
+async function postJson(path: string, body: object) {
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+  return data;
+}
+
+function TicketBoothAuthInner({ initialMode = 'signup' }: TicketBoothAuthProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const searchParams = useSearchParams();
+  const { signIn, signUp, continueAsGuest } = useAuth();
+
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [guestName, setGuestName] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [ticketIssued, setTicketIssued] = useState(false);
 
-  const formRef = useRef<HTMLFormElement>(null);
-  const emailStubRef = useRef<HTMLDivElement>(null);
-  const passwordGroupRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLDivElement>(null);
+  const passwordRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Google Identity Services (GIS) if client id is configured in environment
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
-
-    const interval = setInterval(() => {
-      if ((window as any).google?.accounts?.id) {
-        clearInterval(interval);
-        try {
-          (window as any).google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (response: any) => {
-              if (response?.credential) {
-                setLoading(true);
-                try {
-                  const res = await fetch('/api/auth/google', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ credential: response.credential }),
-                  });
-                  if (res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    if (typeof window !== 'undefined') {
-                      if (data?.user?.displayName) {
-                        localStorage.setItem('watchparty_username', data.user.displayName);
-                      }
-                      if (data?.user) {
-                        localStorage.setItem('watchparty_user', JSON.stringify(data.user));
-                      }
-                      if (data?.accessToken) {
-                        sessionStorage.setItem('watchparty_token', data.accessToken);
-                      }
-                    }
-                    setTicketIssued(true);
-                    setTimeout(() => router.push('/lobby'), 1200);
-                  }
-                } catch {
-                  // Fallback
-                } finally {
-                  setLoading(false);
-                }
-              }
-            },
-          });
-        } catch (e) {
-          console.warn('Google Identity initialization deferred', e);
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [router]);
-
-  // Trigger tactile error shake
-  const triggerErrorShake = (fieldRef: React.RefObject<HTMLDivElement | null>) => {
-    if (!fieldRef.current) return;
-    animate(fieldRef.current, {
+  const shake = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (!ref.current) return;
+    animate(ref.current, {
       translateX: [-8, 8, -6, 6, -3, 3, 0],
       duration: MotionDurations.snappy,
       ease: MotionEasings.snappyOut,
     });
   };
 
-  const handleGoogleAuth = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-
-    try {
-      // 1. If Google Identity Services (GIS) prompt is active, trigger it
-      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-        (window as any).google.accounts.id.prompt();
-        return;
-      }
-
-      // 2. Direct Google admission (seamless instant sign in for testing & preview)
-      const mockGoogleId = `google_patron_${Math.floor(100000 + Math.random() * 900000)}`;
-      const googleEmail = email.trim() || 'cinephile.patron@gmail.com';
-      const googleName = displayName.trim() || (email ? email.split('@')[0] : 'Cinema VIP Patron');
-
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          googleId: mockGoogleId,
-          email: googleEmail,
-          displayName: googleName,
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-        }),
-      }).catch(() => null);
-
-      if (res && !res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Google box office admission rejected. Please retry.');
-      }
-
-      if (res && res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (typeof window !== 'undefined') {
-          const finalName = data?.user?.displayName || googleName;
-          localStorage.setItem('watchparty_username', finalName);
-          if (data?.user) {
-            localStorage.setItem('watchparty_user', JSON.stringify(data.user));
-          }
-          if (data?.accessToken) {
-            sessionStorage.setItem('watchparty_token', data.accessToken);
-          }
-        }
-      }
-
-      setTicketIssued(true);
-      setTimeout(() => {
-        router.push('/lobby');
-      }, 1200);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Google box office admission failed.');
-      triggerErrorShake(passwordGroupRef);
-    } finally {
-      setLoading(false);
-    }
+  const redirect = () => {
+    const next = searchParams?.get('next') || '/lobby';
+    router.push(next);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ── Sign in ─────────────────────────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-
-    // Validation
-    if (!email || !email.includes('@')) {
-      setErrorMsg('Please punch a valid email onto your admission pass.');
-      triggerErrorShake(emailStubRef);
-      return;
-    }
-
-    if (password.length < 8) {
-      setErrorMsg('Passphrase must be at least 8 characters long (35mm emulsion density).');
-      triggerErrorShake(passwordGroupRef);
-      return;
-    }
-
-    if (mode === 'signup') {
-      const { score } = calculatePasswordStrength(password);
-      if (score < 2) {
-        setErrorMsg('Passphrase emulsion is too fragile. Add numbers or special characters.');
-        triggerErrorShake(passwordGroupRef);
-        return;
-      }
-    }
-
+    if (!email.includes('@')) { setErrorMsg('Enter a valid email'); shake(emailRef); return; }
+    if (password.length < 8) { setErrorMsg('Password too short'); shake(passwordRef); return; }
     setLoading(true);
-
     try {
-      // Use relative API endpoint proxied by Next.js rewrites to backend on port 3001
-      const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
-      const payload = mode === 'signup'
-        ? { email, password, displayName: displayName || email.split('@')[0] }
-        : { email, password };
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(() => null);
-
-      if (res && !res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Box office admission rejected. Check your credentials.');
-      }
-
-      if (res && res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (typeof window !== 'undefined') {
-          const finalName = data?.user?.displayName || displayName || (email ? email.split('@')[0] : 'Patron');
-          localStorage.setItem('watchparty_username', finalName);
-          if (data?.user) {
-            localStorage.setItem('watchparty_user', JSON.stringify(data.user));
-          }
-          if (data?.accessToken) {
-            sessionStorage.setItem('watchparty_token', data.accessToken);
-          }
-        }
-      }
-
-      setTicketIssued(true);
-      setTimeout(() => {
-        router.push('/lobby');
-      }, 1400);
+      await signIn(email, password);
+      redirect();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Box office request failed. Please check your credentials.');
-      triggerErrorShake(passwordGroupRef);
-    } finally {
-      setLoading(false);
-    }
+      setErrorMsg(err.message || 'Sign in failed');
+      shake(passwordRef);
+    } finally { setLoading(false); }
   };
+
+  // ── Sign up ─────────────────────────────────────────────────────────────────
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (!email.includes('@')) { setErrorMsg('Enter a valid email'); shake(emailRef); return; }
+    if (password.length < 8) { setErrorMsg('Password too short'); shake(passwordRef); return; }
+    const { score } = calculatePasswordStrength(password);
+    if (score < 2) { setErrorMsg('Password too weak — add numbers or symbols'); shake(passwordRef); return; }
+    setLoading(true);
+    try {
+      await signUp(email, password, displayName || email.split('@')[0], inviteCode || undefined);
+      setSuccessMsg('Check your email to verify your account.');
+      setMode('verify');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Sign up failed');
+      shake(passwordRef);
+    } finally { setLoading(false); }
+  };
+
+  // ── Forgot password ─────────────────────────────────────────────────────────
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (!email.includes('@')) { setErrorMsg('Enter a valid email'); shake(emailRef); return; }
+    setLoading(true);
+    try {
+      await postJson('/api/auth/forgot-password', { email });
+      setSuccessMsg('Reset link sent — check your email.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Request failed');
+    } finally { setLoading(false); }
+  };
+
+  // ── Guest ───────────────────────────────────────────────────────────────────
+  const handleGuest = async () => {
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      await continueAsGuest(guestName || undefined);
+      redirect();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Guest login failed');
+    } finally { setLoading(false); }
+  };
+
+  // ── Mode helpers ────────────────────────────────────────────────────────────
+  const switchMode = (m: AuthMode) => { setMode(m); setErrorMsg(null); setSuccessMsg(null); };
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      {/* TICKET BOOTH ARCHITECTURE FAÇADE */}
-      <div className="relative bg-surface border-2 border-border-brass rounded-sm shadow-velvet-raised overflow-hidden">
-        {/* Overhead Brass Marquee Sign */}
-        <div className="bg-[#0E0B09] border-b-2 border-border-brass px-6 py-4 flex flex-col items-center justify-center text-center relative">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span className="font-mono text-[10px] text-accent uppercase tracking-widest">
-              BOX OFFICE &bull; WILL CALL WINDOW
-            </span>
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          </div>
-          <h2 className="font-display font-semibold text-2xl text-text">
-            {mode === 'signup' ? 'Get your ticket' : 'Sign in'}
-          </h2>
-          <p className="text-sm text-muted mt-1">
-            {mode === 'signup'
-              ? 'Claim your admission pass.'
-              : 'Enter your room.'}
-          </p>
+      <div className="relative bg-[#1A1512] border-2 border-[#3A2E26] rounded-sm shadow-[0_30px_60px_rgba(0,0,0,0.5)] overflow-hidden">
 
-          {/* Mode Switcher Tabs */}
-          <div className="flex gap-2 mt-4 p-1 bg-surface-2 rounded-full border border-border-brass">
-            <button
-              type="button"
-              onClick={() => { setMode('signup'); setErrorMsg(null); }}
-              className={`px-4 py-1 text-xs font-ui font-medium rounded-full transition-all ${
-                mode === 'signup'
-                  ? 'bg-accent text-[#0E0B09] font-bold shadow-none'
-                  : 'text-muted hover:text-text'
-              }`}
-            >
-              Sign up
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('login'); setErrorMsg(null); }}
-              className={`px-4 py-1 text-xs font-ui font-medium rounded-full transition-all ${
-                mode === 'login'
-                  ? 'bg-accent text-[#0E0B09] font-bold shadow-none'
-                  : 'text-muted hover:text-text'
-              }`}
-            >
-              Sign in
-            </button>
+        {/* Header */}
+        <div className="bg-[#0E0B09] border-b-2 border-[#3A2E26] px-6 py-4 flex flex-col items-center text-center">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#FF9F1C] animate-pulse" />
+            <span className="font-mono text-[10px] text-[#FF9F1C] uppercase tracking-widest">
+              BOX OFFICE · WILL CALL WINDOW
+            </span>
+            <span className="w-2 h-2 rounded-full bg-[#FF9F1C] animate-pulse" />
           </div>
+          <h2 className="font-display font-semibold text-2xl text-[#F3E9DC]">
+            {mode === 'login' && 'Sign in'}
+            {mode === 'signup' && 'Get your ticket'}
+            {mode === 'forgot' && 'Reset password'}
+            {mode === 'verify' && 'Verify email'}
+          </h2>
+
+          {/* Mode tabs */}
+          {(mode === 'login' || mode === 'signup') && (
+            <div className="flex gap-2 mt-4 p-1 bg-[#261E19] rounded-full border border-[#3A2E26]">
+              <button type="button" onClick={() => switchMode('signup')}
+                className={`px-4 py-1 text-xs font-medium rounded-full transition-all ${mode === 'signup' ? 'bg-[#FF9F1C] text-[#0E0B09] font-bold' : 'text-[#A89B8C] hover:text-[#F3E9DC]'}`}>
+                Sign up
+              </button>
+              <button type="button" onClick={() => switchMode('login')}
+                className={`px-4 py-1 text-xs font-medium rounded-full transition-all ${mode === 'login' ? 'bg-[#FF9F1C] text-[#0E0B09] font-bold' : 'text-[#A89B8C] hover:text-[#F3E9DC]'}`}>
+                Sign in
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* BOX OFFICE FORM BODY */}
-        <form ref={formRef} onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          {/* TICKET ISSUED SUCCESS BANNER */}
-          {ticketIssued && (
-            <div className="p-4 bg-accent/20 border border-accent rounded-sm text-center animate-pulse">
-              <span className="font-mono text-xs text-accent font-bold block mb-1">
-                ADMISSION GRANTED • TICKET PUNCHED
-              </span>
-              <p className="text-xs text-text">
-                Welcome to the auditorium. Ushering you into Balcony Suite...
-              </p>
+        {/* Body */}
+        <div className="p-6 md:p-8 space-y-5">
+
+          {/* Success banner */}
+          {successMsg && (
+            <div className="p-3 bg-[#2EC4B6]/15 border border-[#2EC4B6]/40 rounded-sm text-xs font-mono text-[#2EC4B6]">
+              {successMsg}
             </div>
           )}
 
-          {/* GOOGLE SIGN IN BUTTON */}
-          <div>
-            <button
-              type="button"
-              onClick={handleGoogleAuth}
-              disabled={loading || ticketIssued}
-              className="w-full py-3 bg-[#261E19] hover:bg-[#2F251F] active:bg-[#1A1512] border border-border-brass hover:border-accent text-text font-ui font-medium text-sm rounded-sm transition-all flex items-center justify-center gap-3 cursor-pointer shadow-velvet-raised group disabled:opacity-50"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" className="flex-shrink-0" aria-hidden="true">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-
-            {/* DIVIDER */}
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-[1px] bg-border-brass/40" />
-              <span className="text-[10px] font-mono uppercase tracking-widest text-muted">
-                or email
-              </span>
-              <div className="flex-1 h-[1px] bg-border-brass/40" />
-            </div>
-          </div>
-
-          {/* DISPLAY NAME (Only for Sign Up) */}
-          {mode === 'signup' && (
-            <div>
-              <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
-                Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Elena Rostova"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full bg-surface-2 border border-border-brass rounded-sm px-3.5 py-2.5 text-sm text-text placeholder-muted-dark focus:border-accent focus:shadow-projector outline-none transition-all shadow-velvet-inset"
-              />
-            </div>
-          )}
-
-          {/* EMAIL FIELD AS AN AUTHENTIC TICKET STUB */}
-          <div ref={emailStubRef} className="relative">
-            <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
-              Email
-            </label>
-
-            {/* The Ticket Stub Container */}
-            <div className="relative bg-[#201813] border border-border-brass rounded-sm overflow-hidden flex items-stretch shadow-velvet-raised">
-              {/* Left Stub Badge */}
-              <div className="bg-[#140F0C] border-r border-dashed border-border-brass px-3 py-3 flex flex-col justify-center items-center select-none relative">
-                <span className="font-mono text-[9px] text-accent tracking-widest uppercase rotate-180 [writing-mode:vertical-rl]">
-                  ADMIT ONE
-                </span>
-                {/* Semicircular Perforation Notch */}
-                <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-surface border border-border-brass" />
-              </div>
-
-              {/* Stub Input Body */}
-              <div className="flex-1 p-3 flex flex-col justify-center pl-4">
-                <input
-                  type="email"
-                  required
-                  placeholder="patron@watchparty.live"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border-none text-text text-sm font-sans placeholder-muted-dark focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* PASSWORD FIELD WITH FILM-STRIP METER */}
-          <div ref={passwordGroupRef}>
-            <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-1.5">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-surface-2 border border-border-brass rounded-sm px-3.5 py-2.5 text-sm text-text placeholder-muted-dark focus:border-accent focus:shadow-projector outline-none transition-all shadow-velvet-inset"
-            />
-
-            {/* Film-Strip Password Strength Meter */}
-            {mode === 'signup' && (
-              <PasswordFilmStripMeter password={password} />
-            )}
-          </div>
-
-          {/* INLINE ERROR WITH MARQUEE ALERT */}
+          {/* Error banner */}
           {errorMsg && (
-            <div className="p-3 bg-danger/15 border border-danger/50 rounded-sm flex items-center gap-2.5 text-xs text-[#FF5A6E] animate-fadeIn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" className="flex-shrink-0">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
+            <div className="p-3 bg-[#E4572E]/15 border border-[#E4572E]/40 rounded-sm text-xs text-[#E4572E] flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
-              <span>{errorMsg}</span>
+              {errorMsg}
             </div>
           )}
 
-          {/* SUBMIT BUTTON: "Get your ticket" */}
-          <button
-            type="submit"
-            disabled={loading || ticketIssued}
-            className="w-full py-3.5 bg-accent hover:bg-[#FFAE38] active:bg-[#E6880C] text-[#0E0B09] font-display font-bold text-base tracking-wide rounded-sm transition-all shadow-projector flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? (
-              <FilmReelSpinner size="sm" />
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-                <span>{mode === 'signup' ? 'Get your ticket' : 'Enter'}</span>
-              </>
-            )}
-          </button>
+          {/* ── Verify email screen ── */}
+          {mode === 'verify' && (
+            <div className="text-center space-y-4 py-4">
+              <p className="text-sm text-[#A89B8C]">Check your inbox and click the verification link.</p>
+              <button type="button" onClick={() => switchMode('login')}
+                className="text-[#FF9F1C] font-mono text-sm underline cursor-pointer bg-transparent border-none">
+                Back to sign in
+              </button>
+            </div>
+          )}
 
-        </form>
+          {/* ── Forgot password screen ── */}
+          {mode === 'forgot' && (
+            <form onSubmit={handleForgot} className="space-y-4">
+              <div ref={emailRef}>
+                <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Email</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="patron@watchparty.live"
+                  className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none" />
+              </div>
+              <button type="submit" disabled={loading}
+                className="w-full py-3 bg-[#FF9F1C] hover:brightness-105 text-[#0E0B09] font-bold rounded-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer border-none">
+                {loading ? <FilmReelSpinner size="sm" /> : 'Send reset link'}
+              </button>
+              <button type="button" onClick={() => switchMode('login')}
+                className="w-full text-center text-xs font-mono text-[#A89B8C] hover:text-[#F3E9DC] cursor-pointer bg-transparent border-none">
+                Back to sign in
+              </button>
+            </form>
+          )}
+
+          {/* ── Sign in / Sign up forms ── */}
+          {(mode === 'login' || mode === 'signup') && (
+            <>
+              <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
+                {mode === 'signup' && (
+                  <div>
+                    <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Name</label>
+                    <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Your display name"
+                      className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none" />
+                  </div>
+                )}
+
+                <div ref={emailRef}>
+                  <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Email</label>
+                  <div className="flex items-stretch bg-[#201813] border border-[#3A2E26] rounded-sm overflow-hidden">
+                    <div className="bg-[#140F0C] border-r border-dashed border-[#3A2E26] px-3 flex flex-col justify-center items-center relative">
+                      <span className="font-mono text-[9px] text-[#FF9F1C] tracking-widest uppercase rotate-180 [writing-mode:vertical-rl]">ADMIT</span>
+                      <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[#1A1512] border border-[#3A2E26]" />
+                    </div>
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder="patron@watchparty.live"
+                      className="flex-1 bg-transparent border-none px-4 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:outline-none" />
+                  </div>
+                </div>
+
+                <div ref={passwordRef}>
+                  <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Password</label>
+                  <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none" />
+                  {mode === 'signup' && <PasswordFilmStripMeter password={password} />}
+                </div>
+
+                {mode === 'signup' && (
+                  <div>
+                    <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Invite code</label>
+                    <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
+                      placeholder="Required for sign-up"
+                      className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none font-mono uppercase tracking-wider" />
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading}
+                  className="w-full py-3 bg-[#FF9F1C] hover:brightness-105 active:brightness-90 text-[#0E0B09] font-display font-bold text-base rounded-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer border-none transition-all">
+                  {loading ? <FilmReelSpinner size="sm" /> : mode === 'login' ? 'Enter' : 'Get your ticket'}
+                </button>
+              </form>
+
+              {/* Forgot password link */}
+              {mode === 'login' && (
+                <div className="text-center">
+                  <button type="button" onClick={() => switchMode('forgot')}
+                    className="text-xs font-mono text-[#A89B8C] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none">
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#3A2E26]/60" />
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#A89B8C]">or</span>
+                <div className="flex-1 h-px bg-[#3A2E26]/60" />
+              </div>
+
+              {/* Guest */}
+              <div className="space-y-2">
+                <input type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Guest name (optional)"
+                  className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none" />
+                <button type="button" onClick={handleGuest} disabled={loading}
+                  className="w-full py-2.5 bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#FF9F1C] text-[#F3E9DC] font-ui font-medium text-sm rounded-sm flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50 border-solid">
+                  {loading ? <FilmReelSpinner size="sm" /> : 'Continue as guest'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+export function TicketBoothAuth(props: TicketBoothAuthProps) {
+  return (
+    <React.Suspense fallback={<div className="w-full max-w-lg mx-auto py-12 text-center font-mono text-xs text-[#A89B8C]">Loading box office...</div>}>
+      <TicketBoothAuthInner {...props} />
+    </React.Suspense>
   );
 }

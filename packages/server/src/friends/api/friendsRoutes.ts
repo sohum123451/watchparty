@@ -19,10 +19,17 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 }
 
 function sendJson(res: http.ServerResponse, statusCode: number, data: any): void {
+  const origin = (res as any)._reqOrigin || "*";
+  const corsHeaders: Record<string, string> = {};
+  if (origin && origin !== "*") {
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
+    corsHeaders["Access-Control-Allow-Credentials"] = "true";
+  } else {
+    corsHeaders["Access-Control-Allow-Origin"] = "*";
+  }
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Credentials": "true",
+    ...corsHeaders,
   });
   res.end(JSON.stringify(data));
 }
@@ -47,13 +54,16 @@ export async function handleFriendsRoute(
     return false;
   }
 
+  (res as any)._reqOrigin = req.headers.origin;
+
   // Preflight
   if (req.method === "OPTIONS") {
+    const origin = req.headers.origin || "*";
     res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
+      ...(origin !== "*" ? { "Access-Control-Allow-Credentials": "true" } : {}),
     });
     res.end();
     return true;
