@@ -496,4 +496,42 @@ describe("Authentication & Authorization System", () => {
       guestWs.close();
     });
   });
+
+  describe("Google Identity & OAuth", () => {
+    it("provisions new user on first Google login and links on subsequent login", async () => {
+      const session1 = await authService.loginWithGoogle({
+        googleId: "google_sub_12345",
+        email: "patron.google@example.com",
+        displayName: "Google Patron",
+        avatar: "https://lh3.googleusercontent.com/a/photo",
+      });
+
+      expect(session1.user.email).toBe("patron.google@example.com");
+      expect(session1.user.displayName).toBe("Google Patron");
+      expect(session1.user.isEmailVerified).toBe(true);
+      expect(session1.accessToken).toBeDefined();
+
+      // Subsequent login with same googleId returns the same user
+      const session2 = await authService.loginWithGoogle({
+        googleId: "google_sub_12345",
+        email: "patron.google@example.com",
+      });
+
+      expect(session2.user.id).toBe(session1.user.id);
+
+      // Links existing password user if email matches
+      const passUser = await authService.signup({
+        email: "existing.pass@example.com",
+        password: "Password123!",
+        displayName: "Existing Pass",
+      });
+
+      const linkedSession = await authService.loginWithGoogle({
+        googleId: "google_sub_99999",
+        email: "existing.pass@example.com",
+      });
+
+      expect(linkedSession.user.id).toBe(passUser.user.id);
+    });
+  });
 });

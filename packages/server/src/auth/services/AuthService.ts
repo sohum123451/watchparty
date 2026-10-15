@@ -285,6 +285,98 @@ export class AuthService {
   }
 
   /**
+   * Authenticates or provisions a patron via Google Identity / OAuth.
+   * Links to existing account if email matches, otherwise creates verified patron account.
+   */
+  public async loginWithGoogle(data: {
+    googleId: string;
+    email: string;
+    displayName?: string;
+    avatar?: string;
+    deviceInfo?: string;
+    clientIp?: string;
+  }): Promise<AuthSessionResponse> {
+    const email = data.email.toLowerCase().trim();
+    if (!email || !email.includes("@")) {
+      const err: any = new Error("A valid email address is required from Google profile");
+      err.status = 400;
+      throw err;
+    }
+
+    if (!data.googleId) {
+      const err: any = new Error("Google subject identifier (googleId) is required");
+      err.status = 400;
+      throw err;
+    }
+
+    // 1. Look for existing user by googleId
+    let user = await this.repo.findUserByGoogleId(data.googleId);
+
+    // 2. If not found by googleId, find by email to link accounts
+    if (!user) {
+      user = await this.repo.findUserByEmail(email);
+      if (user) {
+        user = await this.repo.updateUser(user.id, {
+          googleId: data.googleId,
+          emailVerifiedAt: user.emailVerifiedAt || new Date(),
+          avatar: user.avatar || data.avatar,
+        });
+      }
+    }
+
+    // 3. If account still does not exist, provision a new patron
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const passwordHash = await PasswordSecurity.hashPassword(randomPassword);
+      user = await this.repo.createUser({
+        email,
+        passwordHash,
+        displayName: data.displayName?.trim() || email.split("@")[0],
+        avatar: data.avatar,
+        googleId: data.googleId,
+        emailVerifiedAt: new Date(),
+      });
+    }
+
+    if (user.isBanned) {
+      const err: any = new Error(`Account has been suspended: ${user.bannedReason || "Contact cinema management"}`);
+      err.status = 403;
+      throw err;
+    }
+
+    // 4. Issue refresh token and session
+    const familyId = crypto.randomUUID();
+    const rawRefreshToken = TokenSecurity.generateRandomToken(40);
+    const refreshTokenHash = TokenSecurity.hashToken(rawRefreshToken);
+    await this.repo.createRefreshToken({
+      userId: user.id,
+      tokenHash: refreshTokenHash,
+      familyId,
+      deviceInfo: data.deviceInfo,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
+    const accessToken = await TokenSecurity.signAccessToken({
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      isEmailVerified: true,
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        isEmailVerified: true,
+      },
+      accessToken,
+      refreshToken: rawRefreshToken,
+    };
+  }
+
+  /**
    * Rotates a refresh token. Detects token reuse and revokes the whole token family if reuse is detected.
    */
   public async refresh(rawRefreshToken: string, deviceInfo?: string): Promise<AuthSessionResponse> {

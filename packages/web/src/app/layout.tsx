@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Fraunces, Bricolage_Grotesque, DM_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { PageTransition } from '@/motion/PageTransition';
@@ -60,6 +61,7 @@ export default function RootLayout({
         <PageTransition className="relative z-10 min-h-screen flex flex-col">
           {children}
         </PageTransition>
+        <Script src="https://accounts.google.com/gsi/client" strategy="lazyOnload" />
       </body>
     </html>
   );

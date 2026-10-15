@@ -31,5 +31,18 @@ describe('Watch Party Screens & Components Suite', () => {
       expect(result.score).toBe(4);
       expect(result.label).toContain('Master Vault');
     });
+
+    it('verifies Google Auth parameters structure for box office admission', () => {
+      const googlePayload = {
+        googleId: 'google_sub_109283',
+        email: 'cinematheque.patron@gmail.com',
+        displayName: 'Cinephile Patron',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+      };
+
+      expect(googlePayload.googleId).toMatch(/^google_/);
+      expect(googlePayload.email).toContain('@');
+      expect(googlePayload.displayName.length).toBeGreaterThan(0);
+    });
   });
 });

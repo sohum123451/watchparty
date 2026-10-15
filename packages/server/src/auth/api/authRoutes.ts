@@ -69,9 +69,20 @@ export async function handleAuthRoute(
   const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "127.0.0.1";
   const deviceInfo = (req.headers["user-agent"] as string) || "Unknown client";
 
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+    });
+    res.end();
+    return true;
+  }
+
   try {
-    // 1. POST /api/auth/signup
-    if (url.pathname === "/api/auth/signup" && req.method === "POST") {
+    // 1. POST /api/auth/signup (or /api/auth/register)
+    if ((url.pathname === "/api/auth/signup" || url.pathname === "/api/auth/register") && req.method === "POST") {
       const body = await parseBody(req);
       const session = await authService.signup({
         email: body.email,
@@ -85,6 +96,54 @@ export async function handleAuthRoute(
 
       setRefreshTokenCookie(res, session.refreshToken);
       sendJson(res, 201, {
+        user: session.user,
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+      });
+      return true;
+    }
+
+    // Google Identity / OAuth endpoint: POST /api/auth/google
+    if (url.pathname === "/api/auth/google" && req.method === "POST") {
+      const body = await parseBody(req);
+      let googleId = body.googleId;
+      let email = body.email;
+      let displayName = body.displayName;
+      let avatar = body.avatar;
+
+      // Decode Google Identity Services (GIS) credential token if supplied
+      if (body.credential && typeof body.credential === "string") {
+        try {
+          const parts = body.credential.split(".");
+          if (parts.length >= 2) {
+            const rawPayload = Buffer.from(parts[1], "base64").toString("utf8");
+            const parsed = JSON.parse(rawPayload);
+            googleId = parsed.sub || googleId;
+            email = parsed.email || email;
+            displayName = parsed.name || displayName;
+            avatar = parsed.picture || avatar;
+          }
+        } catch {
+          // Proceed with explicit parameters
+        }
+      }
+
+      if (!googleId || !email) {
+        sendJson(res, 400, { error: "Google identification (googleId and email) is required" });
+        return true;
+      }
+
+      const session = await authService.loginWithGoogle({
+        googleId,
+        email,
+        displayName,
+        avatar,
+        deviceInfo,
+        clientIp,
+      });
+
+      setRefreshTokenCookie(res, session.refreshToken);
+      sendJson(res, 200, {
         user: session.user,
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
