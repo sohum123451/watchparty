@@ -17,10 +17,36 @@ export default function LandingPage() {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [roomCode, setRoomCode] = useState('');
 
+  const [isCreating, setIsCreating] = useState(false);
+
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomCode.trim()) return;
-    router.push(`/join/${encodeURIComponent(roomCode.trim())}`);
+    router.push(`/room/${encodeURIComponent(roomCode.trim().toUpperCase())}`);
+  };
+
+  const handleCreateRoom = async () => {
+    if (isCreating) return;
+    try {
+      setIsCreating(true);
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomName: 'Grand Auditorium',
+          hostUserName: 'Host',
+          initialVideoId: 'big_buck_bunny',
+        }),
+      });
+      const data = await res.json();
+      if (data?.room?.roomCode) {
+        router.push(`/room/${data.room.roomCode}`);
+      }
+    } catch (err) {
+      console.error('Failed to create room', err);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -36,17 +62,19 @@ export default function LandingPage() {
         </Link>
         <div className="flex items-center gap-6 sm:gap-8 text-base">
           <Link
-            href="/login"
+            href="/lobby"
             className="text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors font-medium"
           >
-            Sign in
+            Lobby
           </Link>
-          <Link
-            href="/signup"
-            className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm sm:text-base px-5 sm:px-5.5 py-2.5 sm:py-3 rounded-full hover:brightness-105 active:scale-95 transition-all shadow-none"
+          <button
+            type="button"
+            onClick={handleCreateRoom}
+            disabled={isCreating}
+            className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm sm:text-base px-5 sm:px-5.5 py-2.5 sm:py-3 rounded-full hover:brightness-105 active:scale-95 transition-all shadow-none border-none cursor-pointer"
           >
-            Get your ticket
-          </Link>
+            {isCreating ? 'Creating...' : 'Get your ticket'}
+          </button>
         </div>
       </nav>
 
@@ -63,17 +91,19 @@ export default function LandingPage() {
             Watch together, perfectly in sync.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <Link
-              href="/signup"
-              className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-base sm:text-lg px-7 py-4 rounded-full hover:brightness-105 active:scale-95 transition-all inline-flex items-center justify-center text-center"
+            <button
+              type="button"
+              onClick={handleCreateRoom}
+              disabled={isCreating}
+              className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-base sm:text-lg px-7 py-4 rounded-full hover:brightness-105 active:scale-95 transition-all inline-flex items-center justify-center text-center border-none cursor-pointer"
             >
-              Get your ticket
-            </Link>
+              {isCreating ? 'Preparing Suite...' : 'Get your ticket'}
+            </button>
             {!showCodeInput ? (
               <button
                 type="button"
                 onClick={() => setShowCodeInput(true)}
-                className="border-[1.5px] border-[#5A4A3E] text-[#F3E9DC] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-base sm:text-lg px-7 py-4 rounded-full transition-colors inline-flex items-center justify-center"
+                className="border-[1.5px] border-[#5A4A3E] text-[#F3E9DC] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-base sm:text-lg px-7 py-4 rounded-full transition-colors inline-flex items-center justify-center bg-transparent cursor-pointer"
               >
                 Join with a code
               </button>
@@ -81,7 +111,7 @@ export default function LandingPage() {
               <form onSubmit={handleJoin} className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="RM-4F7K"
+                  placeholder="ENTER CODE"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value)}
                   autoFocus
@@ -90,7 +120,7 @@ export default function LandingPage() {
                 />
                 <button
                   type="submit"
-                  className="bg-[#261E19] hover:bg-[#3A2E26] text-[#F3E9DC] border border-[#3A2E26] font-mono text-sm px-4 py-3.5 rounded-full transition-colors"
+                  className="bg-[#261E19] hover:bg-[#3A2E26] text-[#F3E9DC] border border-[#3A2E26] font-mono text-sm px-4 py-3.5 rounded-full transition-colors cursor-pointer"
                 >
                   Go
                 </button>
@@ -108,25 +138,25 @@ export default function LandingPage() {
           />
 
           {/* Cream admission ticket stub with circular cutouts */}
-          <Link
-            href="/room/RM-4F7K"
-            className="absolute left-0 top-6 sm:top-10 w-[320px] sm:w-[490px] flex bg-[#F3E9DC] text-[#0E0B09] rounded-[18px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] cursor-pointer hover:scale-[1.02] transition-transform"
+          <div
+            onClick={handleCreateRoom}
+            className="absolute left-0 top-6 sm:top-10 w-[320px] sm:w-[490px] flex bg-[#F3E9DC] text-[#0E0B09] rounded-[18px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] cursor-pointer hover:scale-[1.02] transition-transform select-none"
             style={{ transform: 'rotate(-4deg)' }}
           >
             <div className="flex-1 p-5 sm:p-8">
               <div className="mb-4 sm:mb-5 font-display font-semibold text-2xl sm:text-[44px] leading-[1.02] text-[#0E0B09]">
-                Friday Night Screening
+                Grand Auditorium
               </div>
               <div className="flex gap-6 sm:gap-8 font-mono text-xs sm:text-[13px] text-[#0E0B09]">
                 <div>
-                  ROOM
+                  SUITE
                   <br />
-                  <b className="text-base sm:text-xl font-bold">RM-4F7K</b>
+                  <b className="text-base sm:text-xl font-bold">CLICK TO ENTER</b>
                 </div>
                 <div>
-                  SEAT
+                  PASS
                   <br />
-                  <b className="text-base sm:text-xl font-bold">C-07</b>
+                  <b className="text-base sm:text-xl font-bold">VIP</b>
                 </div>
               </div>
             </div>
@@ -142,23 +172,24 @@ export default function LandingPage() {
                 ADMIT ONE
               </span>
             </div>
-          </Link>
+          </div>
 
           {/* Patrons inside stacked badge */}
           <div className="absolute left-3.5 bottom-4 sm:bottom-7 flex items-center">
             <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#E4572E] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
-              P
+              W
             </span>
             <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#2EC4B6] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
-              S
+              P
             </span>
             <span className="w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-[#F3E9DC] border-[3px] border-[#0E0B09] -mr-2.5 flex items-center justify-center font-bold text-xs sm:text-sm text-[#0E0B09]">
-              A
+              S
             </span>
-            <span className="ml-5 text-sm sm:text-[15px] text-[#A89B8C]">3 inside</span>
+            <span className="ml-5 text-sm sm:text-[15px] text-[#A89B8C]">Take your seat</span>
           </div>
         </div>
       </main>
+
 
       {/* 3 STEPS STRIP */}
       <div className="relative flex flex-col sm:flex-row gap-8 sm:gap-12 px-6 sm:px-12 md:px-16 pt-8 sm:pt-12 mt-28 sm:mt-0">

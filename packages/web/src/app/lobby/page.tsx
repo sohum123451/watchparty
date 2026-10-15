@@ -109,6 +109,39 @@ export default function LobbyPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [friendModalOpen, setFriendModalOpen] = useState(false);
   const [friendCode, setFriendCode] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateRoom = async (name = 'Screening Suite', videoId = 'big_buck_bunny') => {
+    if (isCreating) return;
+    try {
+      setIsCreating(true);
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomName: name,
+          hostUserName: 'Host',
+          initialVideoId: videoId,
+        }),
+      });
+      const data = await res.json();
+      if (data?.room?.roomCode) {
+        router.push(`/room/${data.room.roomCode}`);
+      }
+    } catch (err) {
+      console.error('Failed to create room', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleSearchOrJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchQuery.trim().toUpperCase();
+    if (!query) return;
+    // Direct join if entered as a code
+    router.push(`/room/${encodeURIComponent(query)}`);
+  };
 
   const filteredPicks = TONIGHT_PICKS.filter((pick) =>
     pick.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -126,23 +159,39 @@ export default function LobbyPage() {
           <span>Watch Party</span>
         </Link>
 
-        {/* Search Input */}
-        <div className="flex-1 max-w-md mx-0 sm:mx-6">
+        {/* Search / Join Input */}
+        <form onSubmit={handleSearchOrJoin} className="flex-1 max-w-md mx-0 sm:mx-6 flex gap-2">
           <input
             type="text"
-            aria-label="Search"
-            placeholder="Search"
+            aria-label="Search films or enter room code"
+            placeholder="Search films or enter room code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4.5 py-3.5 text-[#F3E9DC] text-base font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
+            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4.5 py-3 text-[#F3E9DC] text-base font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
           />
-        </div>
+          {searchQuery.trim().length >= 4 && (
+            <button
+              type="submit"
+              className="bg-[#261E19] border border-[#3A2E26] text-[#FF9F1C] px-4 py-2 rounded-xl text-sm font-mono cursor-pointer hover:bg-[#342821] flex-shrink-0"
+            >
+              Join
+            </button>
+          )}
+        </form>
 
-        {/* User Avatar Circle */}
+        {/* Create Room & User Actions */}
         <div className="flex items-center justify-end gap-3.5 text-[15px] text-[#A89B8C]">
+          <button
+            type="button"
+            onClick={() => handleCreateRoom('Cinema Suite', 'big_buck_bunny')}
+            disabled={isCreating}
+            className="bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-sm sm:text-base px-5 py-2.5 rounded-full transition-all cursor-pointer border-none flex-shrink-0"
+          >
+            {isCreating ? 'Creating...' : '+ Create room'}
+          </button>
           <Link
             href="/login"
-            className="w-10 h-10 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] hover:brightness-105 transition-all"
+            className="w-10 h-10 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] hover:brightness-105 transition-all flex-shrink-0"
             title="Profile"
           >
             A
@@ -166,46 +215,48 @@ export default function LobbyPage() {
             {/* Hero Tile: Big Buck Bunny */}
             <div className="flex-[2] min-h-[280px] sm:h-[300px] box-border bg-[#E4572E] text-[#0E0B09] rounded-[20px] p-6 sm:p-7 flex flex-col justify-between">
               <div className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium text-[#0E0B09]">
-                LIVE
+                FEATURED
               </div>
               <div className="font-display font-semibold text-4xl sm:text-6xl md:text-[68px] leading-[0.98] tracking-[-0.02em] text-[#0E0B09] my-3">
                 Big Buck Bunny
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-base text-[#0E0B09] font-medium">Priya</span>
-                <Link
-                  href="/room/RM-4F7K"
-                  className="bg-[#0E0B09] text-[#F3E9DC] hover:text-[#FF9F1C] font-bold text-sm sm:text-base px-6 py-3 rounded-full transition-colors inline-block"
+                <span className="text-base text-[#0E0B09] font-medium">Repertory Film</span>
+                <button
+                  type="button"
+                  onClick={() => handleCreateRoom('Big Buck Bunny Screening', 'big_buck_bunny')}
+                  disabled={isCreating}
+                  className="bg-[#0E0B09] text-[#F3E9DC] hover:text-[#FF9F1C] font-bold text-sm sm:text-base px-6 py-3 rounded-full transition-colors inline-block cursor-pointer border-none"
                 >
-                  Join room
-                </Link>
+                  Start room
+                </button>
               </div>
             </div>
 
-            {/* Right Stack: Podcast Night & Sintel */}
+            {/* Right Stack: Elephants Dream & Sintel */}
             <div className="flex-1 flex flex-col gap-5">
-              <Link
-                href="/room/PODCAST-01"
-                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px]"
+              <div
+                onClick={() => handleCreateRoom('Elephants Dream Screening', 'elephants_dream')}
+                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px] cursor-pointer"
               >
                 <div className="font-mono text-xs tracking-[0.12em] text-[#2EC4B6]">
-                  LIVE
+                  REEL
                 </div>
                 <div className="mt-2.5 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
-                  Podcast night
+                  Elephants Dream
                 </div>
-              </Link>
-              <Link
-                href="/room/SINTEL-4K"
-                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px]"
+              </div>
+              <div
+                onClick={() => handleCreateRoom('Sintel Screening', 'sintel')}
+                className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5.5 flex flex-col justify-between min-h-[135px] cursor-pointer"
               >
                 <div className="font-mono text-xs tracking-[0.12em] text-[#A89B8C]">
-                  9 PM
+                  REEL
                 </div>
                 <div className="mt-2.5 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
                   Sintel
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
 
@@ -222,23 +273,24 @@ export default function LobbyPage() {
           {/* TONIGHT'S PICKS 5 CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4.5">
             {filteredPicks.map((pick) => (
-              <Link
+              <div
                 key={pick.id}
-                href={`/room/${pick.code}`}
+                onClick={() => handleCreateRoom(`${pick.title} Screening`, pick.id)}
                 style={{
                   backgroundColor: pick.bg,
                   color: pick.color,
                   border: pick.border,
                 }}
-                className="h-[250px] box-border rounded-[16px] p-4.5 flex flex-col justify-end hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                className="h-[250px] box-border rounded-[16px] p-4.5 flex flex-col justify-end hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
               >
                 <div className="font-display font-semibold text-xl sm:text-[28px] leading-[1.05]">
                   {pick.title}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
+
 
         {/* RIGHT COLUMN: FRIENDS SIDEBAR (300px) */}
         <aside className="w-full lg:w-[300px] box-border self-start bg-[#1A1512] rounded-[20px] p-6 flex-shrink-0">

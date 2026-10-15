@@ -1,11 +1,14 @@
-import React from 'react';
-import { TheatreAuditorium } from '@/components/theatre/TheatreAuditorium';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function DefaultTheatreRoomPage() {
-  return (
-    <TheatreAuditorium
-      roomCode="CRITERION-70MM"
-      initialTitle="Blade Runner (Final Cut): 70mm Restoration"
-    />
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/lobby');
+  }, [router]);
+
+  return null;
 }

@@ -416,6 +416,53 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Room Creation API
+  if (url.pathname === "/api/rooms" && req.method === "POST") {
+    try {
+      const rawBody = await new Promise<string>((resolve) => {
+        let b = "";
+        req.on("data", (chunk) => {
+          b += chunk.toString();
+        });
+        req.on("end", () => {
+          resolve(b);
+        });
+      });
+      const body = rawBody ? JSON.parse(rawBody) : {};
+      const roomName = body.roomName || "WatchParty Room";
+      const hostUserName = body.hostUserName || "Host";
+      const initialVideoId = body.initialVideoId || "big_buck_bunny";
+      const customCode = body.roomCode ? body.roomCode.trim().toUpperCase() : undefined;
+      const { room, hostUserId, hostSessionToken } = roomManager.createRoom({
+        hostUserName,
+        roomName,
+        initialVideoId,
+        controlMode: body.controlMode || "public",
+        roomCode: customCode,
+      });
+
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          success: true,
+          room: {
+            roomId: room.roomId,
+            roomCode: room.roomCode,
+            roomName: room.roomName,
+            controlMode: room.controlMode,
+          },
+          hostUserId,
+          hostSessionToken,
+        })
+      );
+    } catch (err: any) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err?.message || "Failed to create room" }));
+    }
+    return;
+  }
+
+
   // 12. Movie Discovery API
   if (url.pathname === "/api/movies" && req.method === "GET") {
     const q = url.searchParams.get("q") || "";
