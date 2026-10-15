@@ -55,3 +55,6 @@ watchparty-deploy.tar.gz
 *.id_ed25519*
 id_ed25519*
 
+
+.vercel
+.env*

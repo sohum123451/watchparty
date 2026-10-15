@@ -129,10 +129,17 @@ export function TheatreAuditorium({
   useEffect(() => {
     if (roomStatus === 'not_found' || !roomCode) return;
 
-    let isUnmounted = false;
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.port === '3000' ? `${window.location.hostname}:3001` : window.location.host;
-    const wsUrl = `${wsProtocol}//${wsHost}`;
+    const envWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    let wsUrl: string;
+    if (envWsUrl) {
+      wsUrl = envWsUrl.startsWith('ws://') || envWsUrl.startsWith('wss://')
+        ? envWsUrl
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${envWsUrl}`;
+    } else {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.port === '3000' ? `${window.location.hostname}:3001` : window.location.host;
+      wsUrl = `${wsProtocol}//${wsHost}`;
+    }
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
