@@ -329,12 +329,14 @@ export function TheatreAuditorium({
           }
 
           case 'ROOM_VOICE_STATE_UPDATED': {
+            console.log('[Auditorium VOICE msg]', JSON.stringify(msg.payload));
             const map: Record<string, boolean> = {};
             if (Array.isArray(msg.payload.participants)) {
               for (const p of msg.payload.participants) {
                 map[p.userId] = Boolean(p.isSpeaking);
               }
             }
+            console.log('[Auditorium speakingMap]', JSON.stringify(map));
             setSpeakingMap(map);
             break;
           }
@@ -805,7 +807,7 @@ export function TheatreAuditorium({
                 </div>
               ) : (
                 members.map((member) => {
-                  const isSpeaking = speakingMap[member.userId] || member.isSpeaking;
+                  const isSpeaking = Boolean(speakingMap[member.userId] || member.isSpeaking);
                   const isSelf = member.userId === selfUserId;
                   const palette = getMemberPalette(member.userId);
                   const initial = (member.userName || 'P')[0].toUpperCase();

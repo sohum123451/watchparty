@@ -922,6 +922,7 @@ export interface VoiceStateUpdatePayload {
   audioMuted: boolean;
   videoEnabled: boolean;
   screenSharing?: boolean;
+  isSpeaking?: boolean;
 }
 
 export interface ModMuteVoicePayload {

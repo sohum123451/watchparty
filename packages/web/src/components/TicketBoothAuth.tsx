@@ -58,6 +58,18 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
                     body: JSON.stringify({ credential: response.credential }),
                   });
                   if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (typeof window !== 'undefined') {
+                      if (data?.user?.displayName) {
+                        localStorage.setItem('watchparty_username', data.user.displayName);
+                      }
+                      if (data?.user) {
+                        localStorage.setItem('watchparty_user', JSON.stringify(data.user));
+                      }
+                      if (data?.accessToken) {
+                        sessionStorage.setItem('watchparty_token', data.accessToken);
+                      }
+                    }
                     setTicketIssued(true);
                     setTimeout(() => router.push('/lobby'), 1200);
                   }
@@ -120,6 +132,20 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
         throw new Error(data.error || 'Google box office admission rejected. Please retry.');
       }
 
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (typeof window !== 'undefined') {
+          const finalName = data?.user?.displayName || googleName;
+          localStorage.setItem('watchparty_username', finalName);
+          if (data?.user) {
+            localStorage.setItem('watchparty_user', JSON.stringify(data.user));
+          }
+          if (data?.accessToken) {
+            sessionStorage.setItem('watchparty_token', data.accessToken);
+          }
+        }
+      }
+
       setTicketIssued(true);
       setTimeout(() => {
         router.push('/lobby');
@@ -176,6 +202,20 @@ export function TicketBoothAuth({ initialMode = 'signup' }: TicketBoothAuthProps
       if (res && !res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Box office admission rejected. Check your credentials.');
+      }
+
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (typeof window !== 'undefined') {
+          const finalName = data?.user?.displayName || displayName || (email ? email.split('@')[0] : 'Patron');
+          localStorage.setItem('watchparty_username', finalName);
+          if (data?.user) {
+            localStorage.setItem('watchparty_user', JSON.stringify(data.user));
+          }
+          if (data?.accessToken) {
+            sessionStorage.setItem('watchparty_token', data.accessToken);
+          }
+        }
       }
 
       setTicketIssued(true);

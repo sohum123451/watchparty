@@ -763,6 +763,7 @@ export const VoiceStateUpdateSchema = z.object({
     audioMuted: z.boolean(),
     videoEnabled: z.boolean(),
     screenSharing: z.boolean().optional(),
+    isSpeaking: z.boolean().optional(),
   }),
 });
 
