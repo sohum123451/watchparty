@@ -115,6 +115,7 @@ export function useRoomSocket({
   const attemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalLeaveRef = useRef(false);
+  const isTerminalRef = useRef(false);
   const onMessageRef = useRef(onMessage);
   const userNameRef = useRef(userName);
   const authTokenRef = useRef(authToken);
@@ -209,24 +210,28 @@ export function useRoomSocket({
       if (msg.type === 'ERROR') {
         const code = msg.code ?? msg.payload?.code ?? '';
         if (code === 'ROOM_BANNED') {
+          isTerminalRef.current = true;
           setState('banned');
           setRoomError('You have been banned from this room.');
           ws.close(4003, 'banned');
           return;
         }
         if (code === 'ROOM_KICKED') {
+          isTerminalRef.current = true;
           setState('kicked');
           setRoomError('You were removed from this room.');
           ws.close(4004, 'kicked');
           return;
         }
         if (code === 'ROOM_FULL') {
+          isTerminalRef.current = true;
           setState('kicked');
           setRoomError('Room is full. Try again later.');
           ws.close(4005, 'room_full');
           return;
         }
-        if (code === 'ROOM_NOT_FOUND') {
+        if (code === 'ROOM_NOT_FOUND' || code === 'INVALID_MESSAGE') {
+          isTerminalRef.current = true;
           setState('kicked');
           setRoomError('Room not found.');
           ws.close(4404, 'not_found');
@@ -248,8 +253,8 @@ export function useRoomSocket({
 
       if (intentionalLeaveRef.current) return; // user left on purpose
 
-      // Banned / kicked states are terminal – no reconnect
-      if (state === 'banned' || state === 'kicked') return;
+      // Banned / kicked / not-found states are terminal – no reconnect
+      if (isTerminalRef.current || [4003, 4004, 4005, 4404].includes(event.code)) return;
 
       scheduleReconnect();
     };
@@ -280,6 +285,7 @@ export function useRoomSocket({
     }
 
     intentionalLeaveRef.current = false;
+    isTerminalRef.current = false;
     attemptRef.current = 0;
     setRoomError(null);
     connect();
@@ -319,6 +325,7 @@ export function useRoomSocket({
 
   const retry = useCallback(() => {
     intentionalLeaveRef.current = false;
+    isTerminalRef.current = false;
     attemptRef.current = 0;
     clearReconnectTimer();
     connect();

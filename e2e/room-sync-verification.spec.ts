@@ -4,9 +4,18 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
   test('Two browser windows: create room, join by code, verify play/pause/seek, chat, reactions, seats', async ({
     browser,
   }) => {
-    // 1. Create two isolated browser contexts (two separate users)
+    // 1. Create two isolated browser contexts (two separate users) with guest identity
     const context1 = await browser.newContext();
     const context2 = await browser.newContext();
+
+    await context1.addInitScript(() => {
+      localStorage.setItem('watchparty_user', JSON.stringify({ id: 'usr_patron_1', displayName: 'Patron-1', isGuest: true }));
+      localStorage.setItem('watchparty_username', 'Patron-1');
+    });
+    await context2.addInitScript(() => {
+      localStorage.setItem('watchparty_user', JSON.stringify({ id: 'usr_patron_2', displayName: 'Patron-2', isGuest: true }));
+      localStorage.setItem('watchparty_username', 'Patron-2');
+    });
 
     const page1 = await context1.newPage();
     const page2 = await context2.newPage();
@@ -20,7 +29,7 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
 
     // TEST CHECK 1: Room Not Found check
     console.log('Testing: Room not found for non-existent code...');
-    await page1.goto('http://localhost:3000/room/NON_EXISTENT_TEST_CODE_9999');
+    await page1.goto('http://localhost:3000/room/NONEXIST99');
     await expect(page1.getByText('Room not found')).toBeVisible({ timeout: 10000 });
     const backBtn = page1.getByRole('link', { name: 'Back to lobby' });
     await expect(backBtn).toBeVisible();
@@ -85,8 +94,8 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
 
     // TEST CHECK 6: Reactions counter and heat track update in both windows
     console.log('Testing: Reaction events and counter sync...');
-    const reactBtn1 = page1.locator('button[title="Click to react"]');
-    const reactBtn2 = page2.locator('button[title="Click to react"]');
+    const reactBtn1 = page1.locator('button[title="React"], button[title="Click to react"]');
+    const reactBtn2 = page2.locator('button[title="React"], button[title="Click to react"]');
     await expect(reactBtn1).toContainText('0');
     await expect(reactBtn2).toContainText('0');
 
@@ -150,7 +159,7 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
     // TEST CHECK 8: Speaking ring from voice events
     console.log('Testing: Speaking ring presence...');
     // Click own seat in Window 1 to toggle microphone / speaking status
-    const ownSeat1 = page1.locator('[title="Click seat to toggle your microphone status"]');
+    const ownSeat1 = page1.locator('[title*="toggle mic"], [title*="toggle your microphone"]');
     await ownSeat1.click();
     await page1.waitForTimeout(1000);
 
