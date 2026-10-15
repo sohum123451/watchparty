@@ -18,15 +18,14 @@ interface ReactionItem {
   role?: string;
 }
 
-const SAMPLE_REACTIONS: ReactionItem[] = [
-  { id: 1, user: 'Elena', avatar: 'E', reaction: 'In sync' },
-  { id: 2, user: 'Marcus', avatar: 'M', reaction: 'Sharp grain' },
-  { id: 3, user: 'Sophia', avatar: 'S', reaction: 'Great mix' },
-  { id: 4, user: 'Leo', avatar: 'L', reaction: 'Roll reel' },
-];
-
-export function LiveReactionStrip({ className = '' }: { className?: string }) {
-  const [activeReactions, setActiveReactions] = useState(SAMPLE_REACTIONS);
+export function LiveReactionStrip({
+  reactions = [],
+  className = '',
+}: {
+  reactions?: ReactionItem[];
+  className?: string;
+}) {
+  const [activeReactions, setActiveReactions] = useState<ReactionItem[]>(reactions);
   const [timecode, setTimecode] = useState('01:24:18.04');
 
   // Clock progression

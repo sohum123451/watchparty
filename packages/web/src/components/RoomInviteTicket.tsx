@@ -151,9 +151,16 @@ export function RoomInviteTicket({
                     </div>
                   ))}
                 </div>
-                <span className="text-xs text-muted font-sans ml-2">
-                  Elena, Marcus, and 2 others waiting
-                </span>
+                {room.members && room.members.length > 0 ? (
+                  <span className="text-xs text-muted font-sans ml-2">
+                    {room.members.map((m) => m.name).slice(0, 2).join(', ')}
+                    {room.members.length > 2 ? ` and ${room.members.length - 2} others waiting` : ' waiting'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted font-sans ml-2">
+                    Auditorium ready
+                  </span>
+                )}
               </div>
             </div>
 

@@ -195,7 +195,7 @@ export default function LandingPage() {
           >
             <div className="flex-1 p-5 sm:p-8">
               <div className="mb-4 sm:mb-5 font-display font-semibold text-2xl sm:text-[44px] leading-[1.02] text-[#0E0B09]">
-                Grand Auditorium
+                Private Screening
               </div>
               <div className="flex gap-6 sm:gap-8 font-mono text-xs sm:text-[13px] text-[#0E0B09]">
                 <div>

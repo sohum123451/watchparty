@@ -32,32 +32,9 @@ export interface TicketNotification {
   stubNumber: string;
 }
 
-const INITIAL_FRIENDS: FriendItem[] = [
-  { id: '1', name: 'Elena Rostova', avatar: 'E', status: 'live', currentRoom: 'Stalker (70mm)', roomCode: 'CRITERION-70MM' },
-  { id: '2', name: 'Marcus Vance', avatar: 'M', status: 'live', currentRoom: 'Inception Suite', roomCode: 'ALPHA-902' },
-  { id: '3', name: 'Sophia Chen', avatar: 'S', status: 'idle', currentRoom: 'Foyer Lounge' },
-  { id: '4', name: 'Leo Sterling', avatar: 'L', status: 'offline' },
-  { id: '5', name: 'Maya Lin', avatar: 'M', status: 'offline' },
-];
+const INITIAL_FRIENDS: FriendItem[] = [];
 
-const INITIAL_NOTIFICATIONS: TicketNotification[] = [
-  {
-    id: 'notif_1',
-    fromName: 'Elena Rostova',
-    roomName: 'Stalker (1979) Tarkovsky 4K',
-    roomCode: 'CRITERION-70MM',
-    timeAgo: '4m ago',
-    stubNumber: '008914',
-  },
-  {
-    id: 'notif_2',
-    fromName: 'Marcus Vance',
-    roomName: 'Blade Runner (Final Cut)',
-    roomCode: 'DECK-2049',
-    timeAgo: '18m ago',
-    stubNumber: '008915',
-  },
-];
+const INITIAL_NOTIFICATIONS: TicketNotification[] = [];
 
 export function FriendsRail({ className = '' }: { className?: string }) {
   const [friends, setFriends] = useState(INITIAL_FRIENDS);

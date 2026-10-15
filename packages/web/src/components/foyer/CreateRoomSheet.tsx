@@ -43,7 +43,7 @@ export function CreateRoomSheet({
   const [suiteName, setSuiteName] = useState(`${selectedMovie.title} Screening`);
   const [hostName, setHostName] = useState('Projectionist');
   const [accessTier, setAccessTier] = useState<AccessTier>('public');
-  const [roomCode, setRoomCode] = useState('CRITERION-70MM');
+  const [roomCode, setRoomCode] = useState('');
   const [passphrase, setPassphrase] = useState('');
 
   // Step 3: Acoustics & Projection Rules
@@ -103,7 +103,10 @@ export function CreateRoomSheet({
 
     // Punch ticket sound & transition
     setTimeout(() => {
-      router.push(`/join/${encodeURIComponent(roomCode.trim() || 'CRITERION-70MM')}`);
+      const code = roomCode.trim();
+      if (code) {
+        router.push(`/join/${encodeURIComponent(code)}`);
+      }
     }, 450);
   };
 

@@ -424,7 +424,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/rooms" && req.method === "GET") {
     const rooms = roomManager
       .getAllRooms()
-      .filter((r) => r.roomType !== "private" && !r.isHomeRoom)
+      .filter((r) => r.roomType !== "invite-only" && !r.isHomeRoom)
       .map((r) => {
         const host = r.getMember(r.hostId);
         return {

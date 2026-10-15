@@ -33,13 +33,6 @@ export interface TheatreScene3DProps {
   className?: string;
 }
 
-const DEFAULT_MEMBERS: TheatreMember3D[] = [
-  { id: 'm1', name: 'Elena', avatar: 'E', seatRow: 1, seatCol: 1, isSpeaking: false },
-  { id: 'm2', name: 'Marcus', avatar: 'M', seatRow: 1, seatCol: 2, isSpeaking: true },
-  { id: 'm3', name: 'Sophia', avatar: 'S', seatRow: 1, seatCol: 3, isSpeaking: false },
-  { id: 'm4', name: 'Dmitri', avatar: 'D', seatRow: 2, seatCol: 2, isSpeaking: false },
-  { id: 'm5', name: 'You', avatar: 'Y', seatRow: 2, seatCol: 3, isSpeaking: false },
-];
 
 /**
  * Low-Poly Instanced Cinema Seats
@@ -302,7 +295,7 @@ function CameraRig({
 }
 
 export function TheatreScene3D({
-  members = DEFAULT_MEMBERS,
+  members = [],
   onWalkInDone,
   className = '',
 }: TheatreScene3DProps) {
