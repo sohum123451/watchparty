@@ -4787,9 +4787,11 @@ export class Room {
 
   public canShareScreen(userId: string): boolean {
     if (userId === this.hostId) return true;
-    if (this.approvedScreenSharers.has(userId)) return true;
     const member = this.members.get(userId);
-    if (member && this.hasPermission(userId, "share_screen")) return true;
+    if (!member) return false;
+    if (member.isHost) return true;
+    if (this.controlMode === "public") return true;
+    if (this.hasPermission(userId, "share_screen")) return true;
     return false;
   }
 

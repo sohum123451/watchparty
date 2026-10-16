@@ -62,6 +62,15 @@ function extractYouTubeId(urlOrId: string): string | null {
   return null;
 }
 
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+  ],
+};
+
 export function TheatreAuditorium({
   roomCode,
   className = '',
@@ -79,8 +88,10 @@ export function TheatreAuditorium({
 
   // ── Auth / identity ────────────────────────────────────────────────────────
   const [selfUserId, setSelfUserId] = useState('');
+  const selfUserIdRef = useRef('');
   const [roomTitle, setRoomTitle] = useState('');
   const [members, setMembers] = useState<MemberPublicInfo[]>([]);
+  const membersRef = useRef<MemberPublicInfo[]>([]);
   const [speakingMap, setSpeakingMap] = useState<Record<string, boolean>>({});
 
   // Resolve username
@@ -95,12 +106,16 @@ export function TheatreAuditorium({
   const videoRef = useRef<HTMLVideoElement>(null);
   const screenContainerRef = useRef<HTMLDivElement>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const sendRef = useRef<(msg: any) => void>(() => {});
   const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('youtube');
+  const providerRef = useRef<'html5' | 'youtube' | 'screenshare'>('youtube');
   const [youtubeId, setYoutubeId] = useState<string | null>('bS5P_LAqiVg');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const isScreenSharingRef = useRef(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
@@ -194,10 +209,11 @@ export function TheatreAuditorium({
   const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
       const next = !prev;
+      isMutedRef.current = next;
       if (videoRef.current) {
         videoRef.current.muted = next;
       }
-      if (provider === 'youtube') {
+      if (providerRef.current === 'youtube') {
         if (next) {
           sendYouTubeCommand('mute');
           sendYouTubeCommand('setVolume', [0]);
@@ -208,7 +224,7 @@ export function TheatreAuditorium({
       }
       return next;
     });
-  }, [provider, sendYouTubeCommand]);
+  }, [sendYouTubeCommand]);
 
   // Listen for YouTube IFrame player state updates
   useEffect(() => {
@@ -256,7 +272,9 @@ export function TheatreAuditorium({
         const snap = msg.payload;
         setRoomTitle(snap.roomName || `Room ${roomCode}`);
         setSelfUserId(snap.selfUserId || '');
+        selfUserIdRef.current = snap.selfUserId || '';
         setMembers(snap.members || []);
+        membersRef.current = snap.members || [];
         setQueue(snap.playlist || []);
         setActivePoll(snap.activePoll || null);
         setReactionCount(snap.storedReactions?.length || 0);
@@ -293,6 +311,7 @@ export function TheatreAuditorium({
 
           if (ytId || prov === 'youtube') {
             setProvider('youtube');
+            providerRef.current = 'youtube';
             if (ytId) setYoutubeId(ytId);
             setVideoTitle(title || matchedMovie?.title || 'YouTube Stream');
             if (snap.playback.status === 'playing') {
@@ -304,9 +323,11 @@ export function TheatreAuditorium({
             }
           } else if (prov === 'screenshare') {
             setProvider('screenshare');
+            providerRef.current = 'screenshare';
             setVideoTitle(title || 'Live Screen Stream');
           } else {
             setProvider('html5');
+            providerRef.current = 'html5';
             if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
             else if (srcRef) setVideoSrc(srcRef);
             setVideoTitle(title || matchedMovie?.title || '');
@@ -332,6 +353,7 @@ export function TheatreAuditorium({
       }
 
       case 'PLAYBACK_UPDATE': {
+        const pb = msg.payload;
         if (pb) {
           let vid = pb.videoId;
           let prov = pb.provider;
@@ -351,6 +373,7 @@ export function TheatreAuditorium({
 
           if (ytId || prov === 'youtube') {
             setProvider('youtube');
+            providerRef.current = 'youtube';
             if (ytId) setYoutubeId(ytId);
             if (title) setVideoTitle(title);
 
@@ -366,29 +389,31 @@ export function TheatreAuditorium({
             }
           } else if (prov === 'screenshare') {
             setProvider('screenshare');
+            providerRef.current = 'screenshare';
             if (title) setVideoTitle(title);
           } else {
             setProvider('html5');
+            providerRef.current = 'html5';
             if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
             else if (srcRef) setVideoSrc(srcRef);
             if (title || matchedMovie?.title) setVideoTitle(title || matchedMovie?.title);
 
-          if (videoRef.current) {
-            if (pb.status === 'playing') {
-              const serverNow = Date.now() + clockOffsetRef.current;
-              const elapsed = Math.max(0, (serverNow - pb.serverTimeMs) / 1000);
-              const targetSec = pb.positionMs / 1000 + elapsed * (pb.playbackRate || 1.0);
-              const diff = Math.abs(videoRef.current.currentTime - targetSec);
-              if (diff > 0.4 || videoRef.current.paused) videoRef.current.currentTime = targetSec;
-              videoRef.current.play().catch(() => {});
-              setIsPlaying(true);
-            } else if (pb.status === 'paused') {
-              videoRef.current.currentTime = pb.positionMs / 1000;
-              videoRef.current.pause();
-              setIsPlaying(false);
+            if (videoRef.current) {
+              if (pb.status === 'playing') {
+                const serverNow = Date.now() + clockOffsetRef.current;
+                const elapsed = Math.max(0, (serverNow - pb.serverTimeMs) / 1000);
+                const targetSec = pb.positionMs / 1000 + elapsed * (pb.playbackRate || 1.0);
+                const diff = Math.abs(videoRef.current.currentTime - targetSec);
+                if (diff > 0.4 || videoRef.current.paused) videoRef.current.currentTime = targetSec;
+                videoRef.current.play().catch(() => {});
+                setIsPlaying(true);
+              } else if (pb.status === 'paused') {
+                videoRef.current.currentTime = pb.positionMs / 1000;
+                videoRef.current.pause();
+                setIsPlaying(false);
+              }
             }
           }
-        }
         }
         break;
       }
@@ -396,22 +421,21 @@ export function TheatreAuditorium({
       case 'ROOM_MEMBER_JOINED':
         setMembers((prev) => {
           const idx = prev.findIndex((m) => m.userId === msg.payload.member.userId);
-          if (idx >= 0) {
-            const upd = [...prev];
-            upd[idx] = msg.payload.member;
-            return upd;
-          }
-          return [...prev, msg.payload.member];
+          const next = idx >= 0 ? [...prev] : [...prev, msg.payload.member];
+          if (idx >= 0) next[idx] = msg.payload.member;
+          membersRef.current = next;
+          return next;
         });
-        if (isScreenSharing && screenStreamRef.current) {
+        if (isScreenSharingRef.current && screenStreamRef.current) {
           initiateSharerPeerConnection(msg.payload.member.userId, screenStreamRef.current);
         }
         break;
 
       case 'SCREEN_SHARE_STARTED': {
         const session = msg.payload;
-        if (session.sharerUserId !== selfUserId) {
+        if (session.sharerUserId !== selfUserIdRef.current) {
           setProvider('screenshare');
+          providerRef.current = 'screenshare';
           setVideoTitle(session.title || 'Live Screen Stream');
         }
         break;
@@ -419,10 +443,15 @@ export function TheatreAuditorium({
 
       case 'SCREEN_SHARE_STOPPED': {
         setProvider('html5');
+        providerRef.current = 'html5';
         setIsScreenSharing(false);
+        isScreenSharingRef.current = false;
         if (videoRef.current) videoRef.current.srcObject = null;
-        peerConnectionsRef.current.forEach((pc) => pc.close());
+        peerConnectionsRef.current.forEach((pc) => {
+          try { pc.close(); } catch {}
+        });
         peerConnectionsRef.current.clear();
+        pendingCandidatesRef.current.clear();
         break;
       }
 
@@ -430,21 +459,33 @@ export function TheatreAuditorium({
         const { fromUserId, signalType, signalData } = msg.payload || {};
         if (!fromUserId) break;
 
-        if (isScreenSharing) {
+        if (isScreenSharingRef.current) {
           const pc = peerConnectionsRef.current.get(fromUserId);
           if (pc) {
             if (signalType === 'answer' && signalData) {
-              pc.setRemoteDescription(new RTCSessionDescription(signalData)).catch(() => {});
+              pc.setRemoteDescription(new RTCSessionDescription(signalData))
+                .then(() => {
+                  const pending = pendingCandidatesRef.current.get(fromUserId) || [];
+                  pending.forEach((cand) => {
+                    pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                  });
+                  pendingCandidatesRef.current.delete(fromUserId);
+                })
+                .catch((e) => console.warn('Sharer setRemoteDescription error:', e));
             } else if (signalType === 'ice-candidate' && signalData) {
-              pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+              } else {
+                const queue = pendingCandidatesRef.current.get(fromUserId) || [];
+                queue.push(signalData);
+                pendingCandidatesRef.current.set(fromUserId, queue);
+              }
             }
           }
         } else {
           let pc = peerConnectionsRef.current.get(fromUserId);
           if (!pc && typeof window !== 'undefined' && window.RTCPeerConnection) {
-            pc = new RTCPeerConnection({
-              iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            });
+            pc = new RTCPeerConnection(ICE_SERVERS);
             peerConnectionsRef.current.set(fromUserId, pc);
 
             if (pc.addTransceiver) {
@@ -464,10 +505,14 @@ export function TheatreAuditorium({
                     videoRef.current.srcObject.addTrack(event.track);
                   }
                 }
+                setProvider('screenshare');
+                providerRef.current = 'screenshare';
+                setIsPlaying(true);
                 videoRef.current.play().catch(() => {
                   if (videoRef.current) {
                     videoRef.current.muted = true;
                     setIsMuted(true);
+                    isMutedRef.current = true;
                     videoRef.current.play().catch(() => {});
                   }
                 });
@@ -491,7 +536,14 @@ export function TheatreAuditorium({
           if (pc) {
             if (signalType === 'offer' && signalData) {
               pc.setRemoteDescription(new RTCSessionDescription(signalData))
-                .then(() => pc!.createAnswer())
+                .then(() => {
+                  const pending = pendingCandidatesRef.current.get(fromUserId) || [];
+                  pending.forEach((cand) => {
+                    pc!.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                  });
+                  pendingCandidatesRef.current.delete(fromUserId);
+                  return pc!.createAnswer();
+                })
                 .then((answer) => pc!.setLocalDescription(answer))
                 .then(() => {
                   sendRef.current({
@@ -503,9 +555,15 @@ export function TheatreAuditorium({
                     },
                   });
                 })
-                .catch((e) => console.warn('WebRTC signal offer handling error', e));
+                .catch((e) => console.warn('Viewer handle offer error:', e));
             } else if (signalType === 'ice-candidate' && signalData) {
-              pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+              } else {
+                const queue = pendingCandidatesRef.current.get(fromUserId) || [];
+                queue.push(signalData);
+                pendingCandidatesRef.current.set(fromUserId, queue);
+              }
             }
           }
         }
@@ -513,7 +571,17 @@ export function TheatreAuditorium({
       }
 
       case 'ROOM_MEMBER_LEFT':
-        setMembers((prev) => prev.filter((m) => m.userId !== msg.payload.userId));
+        setMembers((prev) => {
+          const next = prev.filter((m) => m.userId !== msg.payload.userId);
+          membersRef.current = next;
+          return next;
+        });
+        const leavingPc = peerConnectionsRef.current.get(msg.payload.userId);
+        if (leavingPc) {
+          try { leavingPc.close(); } catch {}
+          peerConnectionsRef.current.delete(msg.payload.userId);
+        }
+        pendingCandidatesRef.current.delete(msg.payload.userId);
         break;
 
       case 'ROOM_MEMBER_STATUS':
@@ -671,9 +739,12 @@ export function TheatreAuditorium({
   const initiateSharerPeerConnection = useCallback((targetUserId: string, stream: MediaStream) => {
     if (typeof window === 'undefined' || !window.RTCPeerConnection) return;
     try {
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
+      const existing = peerConnectionsRef.current.get(targetUserId);
+      if (existing) {
+        try { existing.close(); } catch {}
+      }
+
+      const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnectionsRef.current.set(targetUserId, pc);
 
       stream.getTracks().forEach((track) => {
@@ -693,7 +764,10 @@ export function TheatreAuditorium({
         }
       };
 
-      pc.createOffer()
+      pc.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false,
+      })
         .then((offer) => pc.setLocalDescription(offer))
         .then(() => {
           sendRef.current({
@@ -718,10 +792,15 @@ export function TheatreAuditorium({
       });
       screenStreamRef.current = null;
     }
-    peerConnectionsRef.current.forEach((pc) => pc.close());
+    peerConnectionsRef.current.forEach((pc) => {
+      try { pc.close(); } catch {}
+    });
     peerConnectionsRef.current.clear();
+    pendingCandidatesRef.current.clear();
     setIsScreenSharing(false);
+    isScreenSharingRef.current = false;
     setProvider('html5');
+    providerRef.current = 'html5';
     if (videoRef.current) videoRef.current.srcObject = null;
     sendRef.current({
       type: 'SCREEN_SHARE_STOP',
@@ -733,21 +812,29 @@ export function TheatreAuditorium({
   // ── Screen / Tab Share (No Extension Required) ───────────────────────────
   const handleStartScreenShare = async () => {
     try {
-      if (isScreenSharing) {
+      if (isScreenSharingRef.current) {
         handleStopScreenShare();
         return;
       }
 
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: 'browser' },
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      }).catch(async () => {
-        return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+      } catch (err: any) {
+        if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') {
+          return;
+        }
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      }
 
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
+      isScreenSharingRef.current = true;
       setProvider('screenshare');
+      providerRef.current = 'screenshare';
       setVideoTitle(`${userName}'s Stream`);
 
       if (videoRef.current) {
@@ -773,14 +860,15 @@ export function TheatreAuditorium({
       });
 
       // Send offer to all current members
-      members.forEach((m) => {
-        if (m.userId !== selfUserId) {
+      const activeMembers = membersRef.current.length > 0 ? membersRef.current : members;
+      activeMembers.forEach((m) => {
+        if (m.userId !== selfUserIdRef.current) {
           initiateSharerPeerConnection(m.userId, stream);
         }
       });
     } catch (err: any) {
-      if (err?.name !== 'NotAllowedError') {
-        console.warn('Screen share cancelled or not allowed', err);
+      if (err?.name !== 'NotAllowedError' && err?.name !== 'AbortError') {
+        console.warn('Screen share failed', err);
       }
     }
   };
@@ -1133,6 +1221,15 @@ export function TheatreAuditorium({
                 title={videoTitle || 'YouTube Video'}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                onLoad={() => {
+                  if (isMutedRef.current) {
+                    sendYouTubeCommand('mute');
+                    sendYouTubeCommand('setVolume', [0]);
+                  }
+                  if (isPlaying) {
+                    sendYouTubeCommand('playVideo');
+                  }
+                }}
                 className="w-full h-full border-0 rounded-[14px]"
               />
             ) : (
