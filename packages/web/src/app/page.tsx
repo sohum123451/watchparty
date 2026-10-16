@@ -179,6 +179,27 @@ export default function LandingPage() {
               </div>
             )}
           </div>
+
+          {/* Supported Media Capabilities */}
+          <div className="mt-8 flex flex-wrap items-center gap-2.5 text-xs font-mono">
+            <span className="text-[#A89B8C] uppercase tracking-wider text-[11px] mr-1">Supported:</span>
+            <span className="bg-[#1A1512] border border-[#3A2E26] text-[#F3E9DC] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#E4572E]" />
+              YouTube Direct Sync
+            </span>
+            <span className="bg-[#1A1512] border border-[#3A2E26] text-[#F3E9DC] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#2EC4B6]" />
+              Netflix &amp; JioHotstar Tab Stream
+            </span>
+            <span className="bg-[#1A1512] border border-[#3A2E26] text-[#F3E9DC] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#FF9F1C]" />
+              SRT/VTT Subtitles (Howard Chung Engine)
+            </span>
+            <span className="bg-[#1A1512] border border-[#3A2E26] text-[#F3E9DC] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#DDA15E]" />
+              Local File Sync
+            </span>
+          </div>
           {createError && (
             <div className="flex items-center gap-2 mt-4 font-mono text-xs text-[#E4572E]">
               <span>{createError}</span>

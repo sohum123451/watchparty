@@ -110,6 +110,32 @@ export function TheatreAuditorium({
   const [duration, setDuration] = useState(0);
   const [driftMs, setDriftMs] = useState(0);
   const [showSyncDiagnostics, setShowSyncDiagnostics] = useState(false);
+  const [quickYouTubeOpen, setQuickYouTubeOpen] = useState(false);
+  const [quickYouTubeUrl, setQuickYouTubeUrl] = useState('');
+
+  const handleApplyQuickYouTube = (url: string) => {
+    const ytId = extractYouTubeId(url.trim());
+    if (!ytId) return;
+    setProvider('youtube');
+    setYoutubeId(ytId);
+    setVideoTitle(`YouTube (${ytId})`);
+    setIsPlaying(true);
+    setCurrentTime(0);
+    send({
+      type: 'PLAYBACK_LOAD',
+      clientSeq: nextSeq(),
+      payload: {
+        videoId: ytId,
+        provider: 'youtube',
+        sourceRef: `https://www.youtube.com/watch?v=${ytId}`,
+        title: `YouTube (${ytId})`,
+        durationMs: 0,
+        autoPlay: true,
+      },
+    });
+    setQuickYouTubeOpen(false);
+    setQuickYouTubeUrl('');
+  };
 
   const handleSubtitleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -985,6 +1011,113 @@ export function TheatreAuditorium({
       <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
         {/* Left Column */}
         <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-0 overflow-y-auto">
+          {/* QUICK MEDIA ACTION BAR */}
+          <div className="w-full max-w-[960px] mx-auto mb-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl p-3 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#FF9F1C]" />
+                <span className="font-mono text-xs text-[#F3E9DC] font-semibold">Quick Co-Watch:</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickYouTubeOpen(!quickYouTubeOpen)}
+                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#E4572E] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="text-[#E4572E]">▶</span>
+                  <span>YouTube Direct</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartScreenShare}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-ui flex items-center gap-1.5 cursor-pointer transition-all ${
+                    isScreenSharing
+                      ? 'bg-[#E4572E] text-[#0E0B09] border-[#E4572E] font-bold animate-pulse'
+                      : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] hover:border-[#2EC4B6] text-[#2EC4B6]'
+                  }`}
+                  title="Stream your Netflix, Hotstar, Prime Video or browser tab with audio"
+                >
+                  <span>📺</span>
+                  <span>{isScreenSharing ? 'Stop Stream' : 'Stream Netflix / Hotstar Tab'}</span>
+                </button>
+                <label
+                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors select-none"
+                  title="Load local .srt or .vtt subtitle file (Howard Chung engine)"
+                >
+                  <span className="text-[#FF9F1C]">💬</span>
+                  <span>{subtitleUrl ? 'Subtitles Active' : 'Load Subtitles (.srt/.vtt)'}</span>
+                  <input
+                    type="file"
+                    accept=".srt,.vtt"
+                    onChange={handleSubtitleUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowSourcePicker(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#A89B8C] hover:text-[#F3E9DC] flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span>＋ Catalogue</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick YouTube Popdown */}
+            {quickYouTubeOpen && (
+              <div className="pt-2 border-t border-[#2A211B] flex flex-col gap-2 animate-in fade-in duration-150">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleApplyQuickYouTube(quickYouTubeUrl);
+                  }}
+                  className="flex gap-2"
+                >
+                  <input
+                    type="url"
+                    placeholder="Paste YouTube link (e.g. https://www.youtube.com/watch?v=...)"
+                    value={quickYouTubeUrl}
+                    onChange={(e) => setQuickYouTubeUrl(e.target.value)}
+                    autoFocus
+                    className="flex-1 bg-[#0E0B09] border border-[#3A2E26] rounded-lg px-3 py-1.5 text-xs text-[#F3E9DC] placeholder-[#5A4A3E] focus:outline-none focus:border-[#FF9F1C]"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-[#E4572E] text-[#0E0B09] font-bold text-xs rounded-lg hover:brightness-110 cursor-pointer border-none"
+                  >
+                    Load &amp; Sync
+                  </button>
+                </form>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[#A89B8C]">
+                  <span>1-Click Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=aqz-KE-bpKQ')}
+                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
+                  >
+                    🍿 Big Buck Bunny
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=jfKfPfyJRdk')}
+                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
+                  >
+                    🎶 Lofi 24/7
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=xRPjKOm286g')}
+                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
+                  >
+                    🚀 NASA Earth 4K
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* THE SCREEN */}
           <div
             ref={screenContainerRef}
