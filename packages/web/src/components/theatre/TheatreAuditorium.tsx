@@ -136,6 +136,25 @@ export function TheatreAuditorium({
     setQuickYouTubeUrl('');
   };
 
+  // Check for movie selected from lobby
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('wp_initial_movie');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.videoId) {
+            setProvider(parsed.provider || 'youtube');
+            if (parsed.provider === 'youtube') setYoutubeId(parsed.videoId);
+            setVideoTitle(parsed.title || 'Screening');
+            if (parsed.sourceRef) setVideoSrc(parsed.sourceRef);
+          }
+          sessionStorage.removeItem('wp_initial_movie');
+        } catch {}
+      }
+    }
+  }, []);
+
   const handleSubtitleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

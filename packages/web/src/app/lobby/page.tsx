@@ -1,18 +1,27 @@
 'use client';
 
 /**
- * Cinema Foyer / Lobby Page — Phase 2 & 3
- * Matched to approved Private Cinema reference frame.
- * Tokens: bg #0E0B09, surface #1A1512, surface-2 #261E19, line #3A2E26, text #F3E9DC, muted #A89B8C, amber #FF9F1C, red #E4572E, teal #2EC4B6.
- * Typography: Fraunces (display), DM Sans (UI), JetBrains Mono (codes).
- * Flat colour blocks, no gradients, no emojis.
+ * Cinema Foyer / Lobby Page
+ * Luxury Velvet & Brass dark cinema styling with REAL streaming platforms:
+ * 1. Trending on Netflix (Stranger Things, Squid Game, Money Heist, Wednesday, Extraction 2)
+ * 2. Trending on JioHotstar & Disney+ (Special OPS, The Night Manager, Loki, Avengers: Endgame, Brahmāstra)
+ * 3. 100% Free Full Movies on YouTube (Kung Fury, Night of the Living Dead, Charade, The General)
+ * 4. Classic Cinema Vault with real photographic poster art (Sintel, Tears of Steel, Big Buck Bunny)
+ * 5. Real-time active auditories & friends presence sidebar.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { MOVIE_CATALOGUE } from '@watchparty/shared';
+import {
+  MOVIE_CATALOGUE,
+  NETFLIX_CATALOGUE,
+  HOTSTAR_CATALOGUE,
+  YOUTUBE_FULL_MOVIES,
+  FREE_FILMS,
+  Movie,
+} from '@watchparty/shared';
 
 const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
@@ -35,32 +44,9 @@ interface ActiveRoom {
   controlMode: string;
 }
 
-interface CatalogueItem {
-  id: string;
-  title: string;
-  year?: number;
-  runtime?: number;
-  genre?: string;
-  license?: string;
-  attribution?: string;
-  accentColor?: string;
-  textColor?: string;
-  isFree: boolean;
-}
+type PlatformFilter = 'all' | 'netflix' | 'hotstar' | 'youtube' | 'archive';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const ACCENT_CYCLE = [
-  { bg: '#E4572E', text: '#0E0B09' },
-  { bg: '#2EC4B6', text: '#0E0B09' },
-  { bg: '#FF9F1C', text: '#0E0B09' },
-  { bg: '#F3E9DC', text: '#0E0B09' },
-  { bg: '#261E19', text: '#F3E9DC' },
-];
-
-function accentForIndex(i: number) {
-  return ACCENT_CYCLE[i % ACCENT_CYCLE.length];
-}
 
 function avatarInitial(name: string) {
   return (name || '?')[0].toUpperCase();
@@ -86,6 +72,7 @@ export default function LobbyPage() {
     }
   }, [user, authLoading, router]);
 
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -101,11 +88,6 @@ export default function LobbyPage() {
   const [friends, setFriends] = useState<FriendPresence[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [friendsError, setFriendsError] = useState<string | null>(null);
-
-  // Catalogue from server
-  const [catalogue, setCatalogue] = useState<CatalogueItem[]>([]);
-  const [catalogueLoading, setCatalogueLoading] = useState(true);
-  const [catalogueError, setCatalogueError] = useState<string | null>(null);
 
   // Add-friend modal
   const [friendModalOpen, setFriendModalOpen] = useState(false);
@@ -170,77 +152,9 @@ export default function LobbyPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch movie catalogue
-  const fetchCatalogue = useCallback(() => {
-    setCatalogueLoading(true);
-    setCatalogueError(null);
-
-    fetch(`${API}/api/catalogue`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data) => {
-        const raw = data.films || data.items || [];
-        if (raw.length > 0) {
-          setCatalogue(
-            raw.map((item: any, i: number) => ({
-              id: item.id,
-              title: item.title,
-              year: item.year,
-              runtime: item.runtime,
-              genre: item.genre,
-              license: item.license || 'Public Domain',
-              attribution: item.attribution || 'Open Access Archive',
-              isFree: item.isFree ?? item.free ?? true,
-              accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
-              textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
-            }))
-          );
-        } else {
-          // Fallback to MOVIE_CATALOGUE
-          setCatalogue(
-            MOVIE_CATALOGUE.map((item: any, i: number) => ({
-              id: item.id,
-              title: item.title,
-              year: item.year || 1925,
-              runtime: item.duration || 60,
-              genre: item.genre || 'Classic',
-              license: 'Public Domain',
-              attribution: 'Open Access Archive',
-              isFree: true,
-              accentColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
-              textColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
-            }))
-          );
-        }
-      })
-      .catch(() => {
-        // Fallback to offline MOVIE_CATALOGUE if server is slow or initializing
-        setCatalogue(
-          MOVIE_CATALOGUE.map((item: any, i: number) => ({
-            id: item.id,
-            title: item.title,
-            year: item.year || 1925,
-            runtime: item.duration || 60,
-            genre: item.genre || 'Classic',
-            license: 'Public Domain',
-            attribution: 'Open Access Archive',
-            isFree: true,
-            accentColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
-            textColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
-          }))
-        );
-      })
-      .finally(() => {
-        setCatalogueLoading(false);
-      });
-  }, []);
-
-  useEffect(() => {
-    fetchCatalogue();
-  }, [fetchCatalogue]);
-
   // ── Actions ──────────────────────────────────────────────────────────────────
 
-  const handleCreateRoom = async (filmId?: string) => {
+  const handleCreateRoom = async (movie?: Movie) => {
     if (isCreating) return;
     setCreateError(null);
     try {
@@ -250,8 +164,17 @@ export default function LobbyPage() {
         (typeof window !== 'undefined' && localStorage.getItem('watchparty_username')) ||
         `Host-${Math.floor(100 + Math.random() * 900)}`;
 
+      if (movie && typeof window !== 'undefined') {
+        sessionStorage.setItem('wp_initial_movie', JSON.stringify({
+          videoId: movie.youtubeId || movie.id,
+          provider: movie.provider === 'youtube' || movie.youtubeId ? 'youtube' : 'html5',
+          sourceRef: movie.youtubeId ? `https://www.youtube.com/watch?v=${movie.youtubeId}` : (movie.videoUrl || movie.playableUrl),
+          title: movie.title,
+        }));
+      }
+
       const body: Record<string, any> = { hostUserName: storedName };
-      if (filmId) body.initialVideoId = filmId;
+      if (movie) body.initialVideoId = movie.id;
 
       const res = await fetch(`${API}/api/rooms`, {
         method: 'POST',
@@ -364,21 +287,29 @@ export default function LobbyPage() {
 
   // ── Filtering ────────────────────────────────────────────────────────────────
 
-  const freeCatalogue = catalogue.filter((c) => c.isFree);
-  const filteredCatalogue = (searchQuery.trim()
-    ? freeCatalogue.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-    : freeCatalogue
-  ).slice(0, 6);
+  const q = searchQuery.trim().toLowerCase();
 
-  const featuredFilm = catalogue.find((c) => c.isFree) || null;
-  const stackFilms = catalogue.filter((c) => c.isFree && c !== featuredFilm).slice(0, 2);
+  const filterList = (list: Movie[]) => {
+    if (!q) return list;
+    return list.filter((m) =>
+      m.title.toLowerCase().includes(q) ||
+      m.description?.toLowerCase().includes(q) ||
+      m.genres?.some((g) => g.toLowerCase().includes(q))
+    );
+  };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const netflixFiltered = useMemo(() => filterList(NETFLIX_CATALOGUE), [q]);
+  const hotstarFiltered = useMemo(() => filterList(HOTSTAR_CATALOGUE), [q]);
+  const youtubeFiltered = useMemo(() => filterList(YOUTUBE_FULL_MOVIES), [q]);
+  const archiveFiltered = useMemo(() => filterList(FREE_FILMS), [q]);
+
+  // Featured Spotlight Film
+  const spotlightFilm = NETFLIX_CATALOGUE[0];
 
   return (
-    <div className="min-h-screen box-border bg-[#0E0B09] text-[#F3E9DC] font-ui pb-12">
+    <div className="min-h-screen box-border bg-[#0E0B09] text-[#F3E9DC] font-ui pb-16">
       {/* HEADER */}
-      <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-6 sm:px-12 md:px-16 py-7">
+      <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-6 sm:px-12 md:px-16 py-7 border-b border-[#1A1512]">
         <Link
           href="/"
           className="flex items-center gap-3 font-display italic font-medium text-2xl sm:text-[28px] text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors"
@@ -391,26 +322,26 @@ export default function LobbyPage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (searchQuery.trim().length >= 4) {
+            if (searchQuery.trim().length === 6) {
               router.push(`/room/${encodeURIComponent(searchQuery.trim().toUpperCase())}`);
             }
           }}
-          className="flex-1 max-w-md mx-0 sm:mx-6 flex gap-2"
+          className="flex-1 max-w-lg mx-0 sm:mx-6 flex gap-2"
         >
           <input
             type="text"
-            aria-label="Search films or enter room code"
-            placeholder="Search films or enter room code…"
+            aria-label="Search movies, shows, or room code"
+            placeholder="Search Netflix, Hotstar, YouTube movies, or 6-digit room code…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4 py-3 text-[#F3E9DC] text-base font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
+            className="w-full box-border bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4 py-3 text-[#F3E9DC] text-sm font-ui placeholder-[#A89B8C] focus:outline-none focus:border-[#FF9F1C] transition-colors"
           />
-          {searchQuery.trim().length >= 4 && (
+          {searchQuery.trim().length === 6 && (
             <button
               type="submit"
-              className="bg-[#261E19] border border-[#3A2E26] text-[#FF9F1C] px-4 py-2 rounded-xl text-sm font-mono cursor-pointer hover:bg-[#342821] flex-shrink-0"
+              className="bg-[#FF9F1C] text-[#0E0B09] px-4 py-2 rounded-xl text-xs font-mono font-bold cursor-pointer hover:brightness-110 flex-shrink-0 border-none"
             >
-              Join
+              Join Room
             </button>
           )}
         </form>
@@ -429,7 +360,7 @@ export default function LobbyPage() {
           {user ? (
             <div className="flex items-center gap-2">
               <span
-                className="w-10 h-10 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] flex-shrink-0 select-none"
+                className="w-9 h-9 rounded-full bg-[#FF9F1C] flex items-center justify-center font-bold text-[#0E0B09] text-xs flex-shrink-0 select-none"
                 title={user.displayName}
               >
                 {avatarInitial(user.displayName)}
@@ -453,65 +384,67 @@ export default function LobbyPage() {
         </div>
       </header>
 
-      {/* Create-room error */}
-      {createError && (
-        <div className="mx-6 sm:mx-12 md:mx-16 -mt-3 mb-4 text-xs font-mono text-[#E4572E] bg-[#1A1512] border border-[#E4572E]/30 rounded-lg px-4 py-2 flex items-center justify-between">
-          <span>{createError}</span>
+      {/* PLATFORM FILTER TABS */}
+      <div className="px-6 sm:px-12 md:px-16 pt-5 pb-2 flex items-center gap-2 sm:gap-3 overflow-x-auto select-none border-b border-[#1A1512]/60">
+        {[
+          { id: 'all', label: '✦ All Platforms' },
+          { id: 'netflix', label: '🔴 Netflix Party' },
+          { id: 'hotstar', label: '🔵 JioHotstar & Disney+' },
+          { id: 'youtube', label: '▶ YouTube Full Movies' },
+          { id: 'archive', label: '🎬 Open Cinema Vault' },
+        ].map((tab) => (
           <button
+            key={tab.id}
             type="button"
-            onClick={() => handleCreateRoom()}
-            className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer text-xs ml-3"
+            onClick={() => setPlatformFilter(tab.id as PlatformFilter)}
+            className={`px-4 py-2 rounded-full text-xs font-mono transition-all cursor-pointer whitespace-nowrap border ${
+              platformFilter === tab.id
+                ? 'bg-[#FF9F1C] text-[#0E0B09] border-[#FF9F1C] font-bold shadow-[0_0_15px_rgba(255,159,28,0.3)]'
+                : 'bg-[#1A1512] text-[#A89B8C] border-[#3A2E26] hover:text-[#F3E9DC] hover:border-[#5A4A3E]'
+            }`}
           >
-            Retry
+            {tab.label}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* MAIN CONTAINER */}
-      <div className="flex flex-col lg:flex-row gap-8 px-6 sm:px-12 md:px-16 pt-3">
-        {/* Left Column */}
-        <div className="flex-1 min-w-0">
-          {/* ACTIVE SCREENINGS / LIVE ROOMS (if any active rooms on server) */}
+      {/* MAIN LAYOUT */}
+      <div className="flex flex-col lg:flex-row gap-8 px-6 sm:px-12 md:px-16 pt-6">
+        {/* Left Column: Movies & OTT */}
+        <div className="flex-1 min-w-0 space-y-10">
+
+          {/* ACTIVE AUDITORIUMS (if any live on server) */}
           {activeRooms.length > 0 && (
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-4">
+            <div className="bg-[#1A1512]/60 border border-[#3A2E26] rounded-2xl p-5">
+              <div className="flex items-center gap-2.5 mb-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#2EC4B6] animate-pulse" />
-                <h2 className="m-0 font-display font-semibold text-2xl text-[#F3E9DC]">Active auditories</h2>
-                <span className="font-mono text-xs bg-[#261E19] text-[#2EC4B6] border border-[#2EC4B6]/30 px-2.5 py-0.5 rounded-full">
-                  {activeRooms.length} live
+                <h2 className="font-display font-semibold text-lg text-[#F3E9DC]">Live Screening Suites</h2>
+                <span className="font-mono text-xs bg-[#261E19] text-[#2EC4B6] px-2 py-0.5 rounded-full">
+                  {activeRooms.length} Active
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {activeRooms.map((r) => (
                   <div
                     key={r.roomCode}
                     onClick={() => router.push(`/room/${r.roomCode}`)}
-                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#FF9F1C] p-5 rounded-xl flex items-center justify-between cursor-pointer transition-all group"
+                    className="bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#2EC4B6] p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all"
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-display font-semibold text-lg text-[#F3E9DC] group-hover:text-[#FF9F1C] truncate">
-                          {r.roomName || `Room #${r.roomCode}`}
-                        </h3>
-                        <span className="font-mono text-xs bg-[#0E0B09] text-[#A89B8C] px-2 py-0.5 rounded">
-                          {r.roomCode}
-                        </span>
+                    <div>
+                      <div className="font-display font-semibold text-sm text-[#F3E9DC] truncate">
+                        {r.roomName || `Room #${r.roomCode}`}
                       </div>
-                      <div className="text-xs text-[#A89B8C] mt-1 flex items-center gap-3">
-                        <span>Host: {r.hostUserName}</span>
+                      <div className="text-[11px] font-mono text-[#A89B8C] mt-1 flex items-center gap-2">
+                        <span>Code: <b className="text-[#FF9F1C]">{r.roomCode}</b></span>
                         <span>•</span>
                         <span>{r.memberCount} seated</span>
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/room/${r.roomCode}`);
-                      }}
-                      className="bg-[#261E19] group-hover:bg-[#FF9F1C] text-[#FF9F1C] group-hover:text-[#0E0B09] font-bold text-xs px-4 py-2 rounded-full transition-all border border-[#3A2E26] cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-full bg-[#2EC4B6] text-[#0E0B09] font-bold text-xs border-none cursor-pointer hover:brightness-110"
                     >
-                      Enter
+                      Enter Suite
                     </button>
                   </div>
                 ))}
@@ -519,163 +452,288 @@ export default function LobbyPage() {
             </div>
           )}
 
-          {/* NOW SHOWING */}
-          <div className="flex items-baseline gap-4">
-            <h2 className="m-0 font-display font-semibold text-3xl sm:text-[44px] text-[#F3E9DC]">Now showing</h2>
-          </div>
+          {/* HERO SPOTLIGHT CARD */}
+          {!q && (platformFilter === 'all' || platformFilter === 'netflix') && spotlightFilm && (
+            <div className="relative rounded-2xl overflow-hidden border border-[#3A2E26] bg-[#140F0C] min-h-[320px] sm:min-h-[380px] flex flex-col justify-end p-6 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] group">
+              <img
+                src={spotlightFilm.posterUrl}
+                alt={spotlightFilm.title}
+                className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0E0B09] via-[#0E0B09]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0E0B09] via-[#0E0B09]/60 to-transparent" />
 
-          {catalogueLoading ? (
-            <div className="mt-5 h-[300px] bg-[#1A1512] rounded-[20px] flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-[#FF9F1C] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : catalogueError ? (
-            <div className="mt-5 text-sm text-[#A89B8C] font-mono flex items-center gap-3">
-              <span>{catalogueError}</span>
-              <button
-                type="button"
-                onClick={() => fetchCatalogue()}
-                className="text-[#FF9F1C] hover:underline font-bold bg-transparent border-none cursor-pointer text-sm"
-              >
-                Retry
-              </button>
-            </div>
-          ) : catalogue.length === 0 ? (
-            <div className="mt-5 text-sm text-[#A89B8C] font-mono">No films in catalogue yet.</div>
-          ) : (
-            <div className="flex flex-col md:flex-row gap-5 mt-5">
-              {/* Hero tile */}
-              {featuredFilm && (() => {
-                const ac = accentForIndex(0);
-                return (
-                  <div
-                    className="flex-[2] min-h-[280px] sm:h-[300px] box-border rounded-[20px] p-6 sm:p-7 flex flex-col justify-between cursor-pointer hover:brightness-105 transition-all"
-                    style={{ backgroundColor: featuredFilm.accentColor || ac.bg, color: featuredFilm.textColor || ac.text }}
-                    onClick={() => handleCreateRoom(featuredFilm.id)}
+              <div className="relative z-10 max-w-2xl space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="bg-[#E50914] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                    Netflix Original
+                  </span>
+                  <span className="text-[#FF9F1C] font-mono text-xs">
+                    ★ {spotlightFilm.rating} • {spotlightFilm.year} • {spotlightFilm.genres?.join(', ')}
+                  </span>
+                </div>
+                <h1 className="font-display font-semibold text-3xl sm:text-5xl lg:text-6xl text-[#F3E9DC] leading-[1.02]">
+                  {spotlightFilm.title}
+                </h1>
+                <p className="text-xs sm:text-sm text-[#A89B8C] leading-relaxed line-clamp-3">
+                  {spotlightFilm.description}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCreateRoom(spotlightFilm)}
+                    disabled={isCreating}
+                    className="px-6 py-3 bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-sm rounded-full transition-all border-none cursor-pointer flex items-center gap-2 shadow-[0_0_20px_rgba(255,159,28,0.3)]"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs sm:text-[13px] tracking-[0.12em] font-medium opacity-90">
-                        {featuredFilm.license ? featuredFilm.license.split('(')[0].trim() : 'FREE'}
-                      </span>
-                      {featuredFilm.attribution && (
-                        <span className="text-[11px] font-mono opacity-70 truncate max-w-[280px]">
-                          • {featuredFilm.attribution}
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-display font-semibold text-4xl sm:text-6xl md:text-[68px] leading-[0.98] tracking-[-0.02em] my-3">
-                        {featuredFilm.title}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium opacity-80">
-                          {featuredFilm.runtime ? `${featuredFilm.runtime}m` : 'Feature'} {featuredFilm.year ? `• ${featuredFilm.year}` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleCreateRoom(featuredFilm.id); }}
-                          disabled={isCreating}
-                          className="bg-[#0E0B09] text-[#F3E9DC] hover:text-[#FF9F1C] font-bold text-sm sm:text-base px-6 py-3 rounded-full transition-colors inline-block cursor-pointer border-none disabled:opacity-50"
-                        >
-                          Start room
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Stack tiles */}
-              <div className="flex-1 flex flex-col gap-5">
-                {stackFilms.length === 0 && (
-                  <div className="flex-1 bg-[#261E19] rounded-[20px] p-5 flex items-center justify-center text-xs text-[#A89B8C] font-mono">
-                    More films coming soon
-                  </div>
-                )}
-                {stackFilms.map((film, i) => {
-                  const ac = accentForIndex(i + 1);
-                  return (
-                    <div
-                      key={film.id}
-                      onClick={() => handleCreateRoom(film.id)}
-                      className="flex-1 bg-[#261E19] hover:bg-[#2F2520] transition-colors rounded-[20px] p-5 flex flex-col justify-between min-h-[135px] cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs tracking-[0.12em]" style={{ color: ac.bg }}>
-                          {film.license ? film.license.split('(')[0].trim() : 'FREE'}
-                        </span>
-                        {film.runtime && (
-                          <span className="text-[11px] font-mono text-[#A89B8C]">{film.runtime}m</span>
-                        )}
-                      </div>
-                      <div className="mt-2 font-display font-semibold text-2xl sm:text-[28px] leading-[1.1] text-[#F3E9DC]">
-                        {film.title}
-                      </div>
-                      {film.attribution && (
-                        <div className="text-[10px] font-mono text-[#A89B8C] truncate mt-1">
-                          {film.attribution}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    <span>▶</span>
+                    <span>Start Co-Watch Suite</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCreateRoom(spotlightFilm)}
+                    className="px-4 py-3 bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#2EC4B6] text-[#2EC4B6] text-xs font-mono rounded-full transition-colors cursor-pointer"
+                  >
+                    📺 Stream Tab with Audio
+                  </button>
+                  <a
+                    href={spotlightFilm.platformUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-3 bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] text-[#A89B8C] hover:text-[#F3E9DC] text-xs font-mono rounded-full transition-colors no-underline"
+                  >
+                    ↗ Netflix
+                  </a>
+                </div>
               </div>
             </div>
           )}
 
-          {/* FREE LIBRARY PICKS */}
-          <div className="flex items-center gap-5 mt-10 mb-4">
-            <h2 className="m-0 font-display font-semibold text-2xl sm:text-[34px] text-[#F3E9DC]">Free library</h2>
-            <span className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-sm px-4 py-2 rounded-full">Free</span>
-          </div>
+          {/* SHELF 1: 🔴 NETFLIX PARTY */}
+          {(platformFilter === 'all' || platformFilter === 'netflix') && netflixFiltered.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A211B] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#E50914]" />
+                  <h2 className="font-display font-semibold text-2xl text-[#F3E9DC]">Trending on Netflix</h2>
+                </div>
+                <span className="text-xs font-mono text-[#A89B8C]">Stream tab with audio or watch preview in sync</span>
+              </div>
 
-          {catalogueLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-[250px] bg-[#1A1512] rounded-[16px] animate-pulse" />
-              ))}
-            </div>
-          ) : filteredCatalogue.length === 0 ? (
-            <div className="text-sm text-[#A89B8C] font-mono">
-              {searchQuery ? 'No results found.' : 'No free films yet.'}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {filteredCatalogue.map((item, i) => {
-                const ac = accentForIndex(i);
-                return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {netflixFiltered.map((movie) => (
                   <div
-                    key={item.id}
-                    onClick={() => handleCreateRoom(item.id)}
-                    style={{ backgroundColor: item.accentColor || ac.bg, color: item.textColor || ac.text }}
-                    className="h-[250px] box-border rounded-[16px] p-4 flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
+                    key={movie.id}
+                    onClick={() => handleCreateRoom(movie)}
+                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#E50914] rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col justify-between group shadow-lg"
                   >
-                    <div className="font-mono text-[10px] uppercase tracking-wider opacity-80">
-                      {item.license ? item.license.split('(')[0].trim() : 'Free'}
-                    </div>
-                    <div>
-                      <div className="font-display font-semibold text-xl sm:text-[26px] leading-[1.05]">
-                        {item.title}
+                    <div className="relative aspect-[3/4] bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#E50914] text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                        Netflix
+                      </span>
+                      <span className="absolute top-2 right-2 bg-black/75 backdrop-blur-sm text-[#FF9F1C] text-[10px] font-mono px-1.5 py-0.5 rounded">
+                        ★ {movie.rating}
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                        <span className="w-full py-2 bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs rounded-lg text-center shadow-lg">
+                          Co-Watch Suite →
+                        </span>
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-mono opacity-80">
-                        <span>{item.runtime ? `${item.runtime}m` : ''} {item.year ? `(${item.year})` : ''}</span>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-display font-semibold text-sm text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors truncate">
+                        {movie.title}
+                      </h3>
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[#A89B8C] mt-1">
+                        <span>{movie.year}</span>
+                        <span>{movie.runtime}m</span>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            </section>
           )}
+
+          {/* SHELF 2: 🔵 JIOHOTSTAR & DISNEY+ */}
+          {(platformFilter === 'all' || platformFilter === 'hotstar') && hotstarFiltered.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A211B] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0063E5]" />
+                  <h2 className="font-display font-semibold text-2xl text-[#F3E9DC]">Trending on JioHotstar &amp; Disney+</h2>
+                </div>
+                <span className="text-xs font-mono text-[#A89B8C]">Indian originals, Marvel &amp; Disney+ co-watching</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {hotstarFiltered.map((movie) => (
+                  <div
+                    key={movie.id}
+                    onClick={() => handleCreateRoom(movie)}
+                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#0063E5] rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col justify-between group shadow-lg"
+                  >
+                    <div className="relative aspect-[3/4] bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#0063E5] text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                        Hotstar
+                      </span>
+                      <span className="absolute top-2 right-2 bg-black/75 backdrop-blur-sm text-[#FF9F1C] text-[10px] font-mono px-1.5 py-0.5 rounded">
+                        ★ {movie.rating}
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                        <span className="w-full py-2 bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs rounded-lg text-center shadow-lg">
+                          Co-Watch Suite →
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-display font-semibold text-sm text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors truncate">
+                        {movie.title}
+                      </h3>
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[#A89B8C] mt-1">
+                        <span>{movie.year}</span>
+                        <span>{movie.runtime}m</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* SHELF 3: ▶ 100% FREE FULL MOVIES ON YOUTUBE */}
+          {(platformFilter === 'all' || platformFilter === 'youtube') && youtubeFiltered.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A211B] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#E4572E]" />
+                  <h2 className="font-display font-semibold text-2xl text-[#F3E9DC]">Full Movies on YouTube (No Subscription)</h2>
+                </div>
+                <span className="text-xs font-mono text-[#A89B8C]">Play full-length features in direct sync</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {youtubeFiltered.map((movie) => (
+                  <div
+                    key={movie.id}
+                    onClick={() => handleCreateRoom(movie)}
+                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#E4572E] rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col justify-between group shadow-lg"
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#E4572E] text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                        Full Movie
+                      </span>
+                      <span className="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-[#F3E9DC] px-2 py-0.5 rounded">
+                        {movie.runtime}m
+                      </span>
+                    </div>
+                    <div className="p-3.5 flex flex-col justify-between flex-1">
+                      <div>
+                        <h3 className="font-display font-semibold text-base text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors leading-tight">
+                          {movie.title}
+                        </h3>
+                        <p className="text-xs text-[#A89B8C] mt-1.5 line-clamp-2">
+                          {movie.description}
+                        </p>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-[#2A211B] flex items-center justify-between text-xs font-mono">
+                        <span className="text-[#A89B8C]">{movie.year}</span>
+                        <span className="text-[#FF9F1C] group-hover:underline font-bold">Play Movie →</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* SHELF 4: 🎬 OPEN CINEMA VAULT */}
+          {(platformFilter === 'all' || platformFilter === 'archive') && archiveFiltered.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A211B] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#2EC4B6]" />
+                  <h2 className="font-display font-semibold text-2xl text-[#F3E9DC]">Cinema Archive &amp; Master Prints</h2>
+                </div>
+                <span className="text-xs font-mono text-[#A89B8C]">Blender 3D open movies &amp; public domain classics</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {archiveFiltered.map((movie) => (
+                  <div
+                    key={movie.id}
+                    onClick={() => handleCreateRoom(movie)}
+                    className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#2EC4B6] rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col justify-between group shadow-lg"
+                  >
+                    <div className="relative aspect-[3/4] bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#2EC4B6] text-[#0E0B09] font-mono text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                        {movie.license ? movie.license.split('(')[0].trim() : 'Free'}
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                        <span className="w-full py-2 bg-[#2EC4B6] text-[#0E0B09] font-bold text-xs rounded-lg text-center shadow-lg">
+                          Screen Film →
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-display font-semibold text-sm text-[#F3E9DC] group-hover:text-[#2EC4B6] transition-colors truncate">
+                        {movie.title}
+                      </h3>
+                      <div className="flex items-center justify-between text-[11px] font-mono text-[#A89B8C] mt-1">
+                        <span>{movie.year}</span>
+                        <span>{movie.runtime}m</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Empty search fallback */}
+          {q &&
+            netflixFiltered.length === 0 &&
+            hotstarFiltered.length === 0 &&
+            youtubeFiltered.length === 0 &&
+            archiveFiltered.length === 0 && (
+              <div className="py-16 text-center text-sm font-mono text-[#A89B8C] bg-[#1A1512] border border-[#3A2E26] rounded-2xl">
+                No titles matching &quot;{searchQuery}&quot;. Try searching for &quot;Stranger Things&quot;, &quot;Special OPS&quot;, or &quot;Kung Fury&quot;.
+              </div>
+            )}
         </div>
 
-        {/* RIGHT SIDEBAR: Friends */}
-        <aside className="w-full lg:w-[320px] box-border self-start bg-[#1A1512] rounded-[20px] p-6 flex-shrink-0">
-          <div className="flex items-baseline justify-between mb-4">
-            <h3 className="m-0 font-display font-semibold text-2xl sm:text-[28px] text-[#F3E9DC]">Friends</h3>
+        {/* RIGHT SIDEBAR: Friends & Codes */}
+        <aside className="w-full lg:w-[320px] box-border self-start bg-[#1A1512] border border-[#3A2E26] rounded-2xl p-6 flex-shrink-0 space-y-5">
+          <div className="flex items-baseline justify-between border-b border-[#2A211B] pb-3">
+            <h3 className="font-display font-semibold text-xl text-[#F3E9DC]">Friends</h3>
+            <span className="font-mono text-xs text-[#A89B8C]">
+              {friends.filter((f) => f.status !== 'offline').length} Online
+            </span>
           </div>
 
           {/* Join with code */}
           {showJoinInput ? (
-            <div className="mb-4">
+            <div>
               <form onSubmit={handleJoinWithCode} className="flex gap-2">
                 <input
                   type="text"
@@ -687,7 +745,7 @@ export default function LobbyPage() {
                 />
                 <button
                   type="submit"
-                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-2 rounded-full cursor-pointer border-none"
+                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3.5 py-2 rounded-full cursor-pointer border-none"
                 >
                   Go
                 </button>
@@ -698,9 +756,9 @@ export default function LobbyPage() {
             <button
               type="button"
               onClick={() => setShowJoinInput(true)}
-              className="w-full mb-4 text-center border-[1.5px] border-[#5A4A3E] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-2.5 text-[13px] transition-colors cursor-pointer bg-transparent"
+              className="w-full text-center border border-[#3A2E26] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-2.5 text-xs font-mono transition-colors cursor-pointer bg-[#261E19]"
             >
-              Join with a code
+              Join with Room Code
             </button>
           )}
 
@@ -721,30 +779,28 @@ export default function LobbyPage() {
               </button>
             </div>
           ) : friends.length === 0 ? (
-            <div className="text-xs font-mono text-[#A89B8C] py-2">No friends yet. Add one below.</div>
+            <div className="text-xs font-mono text-[#A89B8C] py-3 text-center border border-dashed border-[#2A211B] rounded-xl">
+              No friends online yet. Invite friends with room codes!
+            </div>
           ) : (
-            <div>
-              {friends.map((friend, i) => {
+            <div className="space-y-1">
+              {friends.map((friend) => {
                 const dotColor = STATUS_COLOR[friend.status] || '#5A4A3E';
-                const ac = accentForIndex(i);
                 const statusLabel = friend.status.charAt(0).toUpperCase() + friend.status.slice(1);
                 const isMenuOpen = activeFriendActionMenu === friend.userId;
 
                 return (
-                  <div key={friend.userId} className="relative flex items-center gap-3 py-3.5 border-t border-[#2A211B] first:border-t-0">
-                    <span
-                      style={{ backgroundColor: ac.bg, color: ac.text }}
-                      className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 select-none"
-                    >
+                  <div key={friend.userId} className="relative flex items-center gap-3 py-3 border-t border-[#2A211B] first:border-t-0">
+                    <span className="relative w-8 h-8 rounded-full bg-[#FF9F1C] text-[#0E0B09] flex items-center justify-center font-bold text-xs flex-shrink-0 select-none">
                       {avatarInitial(friend.displayName)}
                       <span
                         style={{ backgroundColor: dotColor }}
-                        className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-[#1A1512]"
+                        className="absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#1A1512]"
                       />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-[15px] text-[#F3E9DC] truncate">{friend.displayName}</div>
-                      <div className="text-[13px] text-[#A89B8C]">{statusLabel}</div>
+                      <div className="font-bold text-sm text-[#F3E9DC] truncate">{friend.displayName}</div>
+                      <div className="text-xs text-[#A89B8C]">{statusLabel}</div>
                     </div>
                     {friend.roomCode && (
                       <button
@@ -755,7 +811,6 @@ export default function LobbyPage() {
                         Join
                       </button>
                     )}
-                    {/* More actions dropdown button */}
                     <button
                       type="button"
                       onClick={() => setActiveFriendActionMenu(isMenuOpen ? null : friend.userId)}
@@ -765,7 +820,7 @@ export default function LobbyPage() {
                     </button>
 
                     {isMenuOpen && (
-                      <div className="absolute right-0 top-12 z-20 bg-[#261E19] border border-[#3A2E26] rounded-lg p-1.5 shadow-lg flex flex-col gap-1 min-w-[120px]">
+                      <div className="absolute right-0 top-10 z-20 bg-[#261E19] border border-[#3A2E26] rounded-lg p-1.5 shadow-lg flex flex-col gap-1 min-w-[120px]">
                         <button
                           type="button"
                           onClick={() => handleRemoveFriend(friend.userId)}
@@ -788,17 +843,17 @@ export default function LobbyPage() {
             </div>
           )}
 
-          {/* Add friend */}
+          {/* Add friend button / form */}
           {!friendModalOpen ? (
             <button
               type="button"
               onClick={() => setFriendModalOpen(true)}
-              className="w-full mt-3 text-center border-[1.5px] border-[#5A4A3E] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-3 text-[15px] transition-colors cursor-pointer bg-transparent"
+              className="w-full text-center border border-[#3A2E26] hover:border-[#FF9F1C] hover:text-[#FF9F1C] text-[#F3E9DC] rounded-full py-2.5 text-xs font-mono transition-colors cursor-pointer bg-transparent"
             >
-              Add friend
+              + Add Friend
             </button>
           ) : (
-            <div className="mt-3 flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 pt-1">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -806,13 +861,13 @@ export default function LobbyPage() {
                   value={friendInput}
                   onChange={(e) => { setFriendInput(e.target.value); setAddFriendError(null); }}
                   autoFocus
-                  className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-full px-3.5 py-2 text-xs text-[#F3E9DC] focus:outline-none focus:border-[#FF9F1C]"
+                  className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-full px-3 py-1.5 text-xs text-[#F3E9DC] focus:outline-none focus:border-[#FF9F1C]"
                 />
                 <button
                   type="button"
                   onClick={handleAddFriend}
                   disabled={addFriendLoading}
-                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-2 rounded-full cursor-pointer border-none disabled:opacity-50"
+                  className="bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs px-3 py-1.5 rounded-full cursor-pointer border-none disabled:opacity-50"
                 >
                   {addFriendLoading ? '…' : 'Add'}
                 </button>
@@ -821,7 +876,7 @@ export default function LobbyPage() {
                   onClick={() => { setFriendModalOpen(false); setFriendInput(''); setAddFriendError(null); }}
                   className="text-[#A89B8C] text-xs cursor-pointer bg-transparent border-none"
                 >
-                  Cancel
+                  ✕
                 </button>
               </div>
               {addFriendError && <span className="text-xs font-mono text-[#E4572E]">{addFriendError}</span>}
