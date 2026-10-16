@@ -190,6 +190,26 @@ export function TheatreAuditorium({
     }
   }, []);
 
+  // Universal Mute / Unmute handler across YouTube, HTML5, and WebRTC
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (videoRef.current) {
+        videoRef.current.muted = next;
+      }
+      if (provider === 'youtube') {
+        if (next) {
+          sendYouTubeCommand('mute');
+          sendYouTubeCommand('setVolume', [0]);
+        } else {
+          sendYouTubeCommand('unMute');
+          sendYouTubeCommand('setVolume', [100]);
+        }
+      }
+      return next;
+    });
+  }, [provider, sendYouTubeCommand]);
+
   // Listen for YouTube IFrame player state updates
   useEffect(() => {
     const handleWindowMessage = (e: MessageEvent) => {
@@ -444,7 +464,13 @@ export function TheatreAuditorium({
                     videoRef.current.srcObject.addTrack(event.track);
                   }
                 }
-                videoRef.current.play().catch(() => {});
+                videoRef.current.play().catch(() => {
+                  if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    setIsMuted(true);
+                    videoRef.current.play().catch(() => {});
+                  }
+                });
               }
             };
 
@@ -1154,39 +1180,39 @@ export function TheatreAuditorium({
               </div>
             )}
 
-            {/* Bottom controls bar */}
-            <div className="absolute left-4 right-4 sm:left-5 sm:right-5 bottom-3 pointer-events-auto z-20">
-              {/* Heatmap */}
-              <div style={{ display: 'flex', height: '10px', borderRadius: '3px', overflow: 'hidden', gap: '2px' }}>
-                {heatmapSegments.map((seg) => (
-                  <div
-                    key={seg.id}
-                    style={{ flex: 1, height: '10px', backgroundColor: seg.bg, transition: 'background-color 0.3s ease' }}
-                    title={seg.count > 0 ? `${seg.count} reaction${seg.count > 1 ? 's' : ''}` : undefined}
+            {/* Bottom controls bar for HTML5 / Screenshare (hidden on YouTube to avoid control collision) */}
+            {provider !== 'youtube' && (
+              <div className="absolute left-4 right-4 sm:left-5 sm:right-5 bottom-3 pointer-events-auto z-20">
+                {/* Heatmap */}
+                <div style={{ display: 'flex', height: '10px', borderRadius: '3px', overflow: 'hidden', gap: '2px' }}>
+                  {heatmapSegments.map((seg) => (
+                    <div
+                      key={seg.id}
+                      style={{ flex: 1, height: '10px', backgroundColor: seg.bg, transition: 'background-color 0.3s ease' }}
+                      title={seg.count > 0 ? `${seg.count} reaction${seg.count > 1 ? 's' : ''}` : undefined}
+                    />
+                  ))}
+                </div>
+
+                {/* Scrubber */}
+                <div
+                  data-testid="scrubber-track"
+                  onClick={handleSeek}
+                  style={{ position: 'relative', height: '6px', borderRadius: '3px', background: '#2A211B', marginTop: '6px', cursor: 'pointer' }}
+                >
+                  <div style={{ width: `${progressPercent}%`, height: '6px', borderRadius: '3px', background: '#FF9F1C' }} />
+                  <span
+                    style={{
+                      position: 'absolute', left: `${progressPercent}%`, top: '-4px',
+                      width: '14px', height: '14px', borderRadius: '50%', background: '#F3E9DC', transform: 'translateX(-50%)',
+                      boxShadow: '0 0 8px rgba(0,0,0,0.7)',
+                    }}
                   />
-                ))}
-              </div>
+                </div>
 
-              {/* Scrubber */}
-              <div
-                data-testid="scrubber-track"
-                onClick={handleSeek}
-                style={{ position: 'relative', height: '6px', borderRadius: '3px', background: '#2A211B', marginTop: '6px', cursor: 'pointer' }}
-              >
-                <div style={{ width: `${progressPercent}%`, height: '6px', borderRadius: '3px', background: '#FF9F1C' }} />
-                <span
-                  style={{
-                    position: 'absolute', left: `${progressPercent}%`, top: '-4px',
-                    width: '14px', height: '14px', borderRadius: '50%', background: '#F3E9DC', transform: 'translateX(-50%)',
-                    boxShadow: '0 0 8px rgba(0,0,0,0.7)',
-                  }}
-                />
-              </div>
-
-              {/* Timecodes & player utilities */}
-              <div className="flex items-center justify-between mt-2 font-mono text-xs text-[#A89B8C]">
-                <div className="flex items-center gap-3">
-                  {provider !== 'youtube' && (
+                {/* Timecodes & player utilities */}
+                <div className="flex items-center justify-between mt-2 font-mono text-xs text-[#A89B8C]">
+                  <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={togglePlay}
@@ -1195,46 +1221,42 @@ export function TheatreAuditorium({
                     >
                       {isPlaying ? '⏸' : '▶'}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextMuted = !isMuted;
-                      setIsMuted(nextMuted);
-                      if (videoRef.current) videoRef.current.muted = nextMuted;
-                    }}
-                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
-                    title={isMuted ? 'Unmute' : 'Mute'}
-                  >
-                    {isMuted ? '🔇' : '🔊'}
-                  </button>
-                  <span>{formatMinSec(currentTime)} / {formatMinSec(duration)}</span>
-                </div>
+                    <button
+                      type="button"
+                      onClick={toggleMute}
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
+                      title={isMuted ? 'Unmute' : 'Mute'}
+                    >
+                      {isMuted ? '🔇' : '🔊'}
+                    </button>
+                    <span>{formatMinSec(currentTime)} / {formatMinSec(duration)}</span>
+                  </div>
 
-                <div className="flex items-center gap-3">
-                  <label
-                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer text-[11px] font-mono border border-[#3A2E26] hover:border-[#FF9F1C] px-2 py-0.5 rounded transition-colors flex items-center gap-1 select-none"
-                    title="Upload subtitles (.srt or .vtt)"
-                  >
-                    <span>CC</span>
-                    <input
-                      type="file"
-                      accept=".srt,.vtt"
-                      onChange={handleSubtitleUpload}
-                      className="hidden"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={toggleFullscreen}
-                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
-                    title="Fullscreen mode"
-                  >
-                    ⛶
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <label
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer text-[11px] font-mono border border-[#3A2E26] hover:border-[#FF9F1C] px-2 py-0.5 rounded transition-colors flex items-center gap-1 select-none"
+                      title="Upload subtitles (.srt or .vtt)"
+                    >
+                      <span>CC</span>
+                      <input
+                        type="file"
+                        accept=".srt,.vtt"
+                        onChange={handleSubtitleUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleFullscreen}
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
+                      title="Fullscreen mode"
+                    >
+                      ⛶
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* NOW SCREENING & QUICK SUITE SELECTOR */}
@@ -1257,6 +1279,19 @@ export function TheatreAuditorium({
 
               {/* Action buttons */}
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    isMuted
+                      ? 'bg-[#E4572E]/20 border-[#E4572E] text-[#E4572E]'
+                      : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] text-[#F3E9DC]'
+                  }`}
+                  title={isMuted ? 'Unmute Suite Audio' : 'Mute Suite Audio'}
+                >
+                  <span>{isMuted ? '🔇' : '🔊'}</span>
+                  <span>{isMuted ? 'Unmute' : 'Mute'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {

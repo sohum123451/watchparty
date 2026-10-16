@@ -79,21 +79,19 @@ function backoffMs(attempt: number): number {
 function resolveWsUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_WS_URL;
   if (envUrl) {
-    // Accept bare host, ws://, or wss://
     if (envUrl.startsWith('ws://') || envUrl.startsWith('wss://')) return envUrl;
     const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${proto}//${envUrl}`;
   }
-  // Fallback: assume the Node server runs on port 3001 in dev, same host in prod
+  // Fallback: local development vs production deployment
   if (typeof window !== 'undefined') {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host =
-      window.location.port === '3000'
-        ? `${window.location.hostname}:3001`
-        : window.location.host;
-    return `${proto}//${host}`;
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `ws://${window.location.hostname}:3001`;
+    }
+    // Remote / Vercel production: connect directly to Render WebSocket node
+    return 'wss://watchparty-server-2zjh.onrender.com';
   }
-  return 'ws://localhost:3001';
+  return 'wss://watchparty-server-2zjh.onrender.com';
 }
 
 // ---------------------------------------------------------------------------

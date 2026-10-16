@@ -16,11 +16,11 @@ function generateCode(): string {
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const backendUrl = process.env.API_BACKEND_URL;
+  const backendUrl = process.env.API_BACKEND_URL || 'https://watchparty-server-2zjh.onrender.com';
   if (backendUrl) {
     try {
       const res = await fetch(`${backendUrl}/api/rooms`, {
-        signal: AbortSignal.timeout(1000),
+        signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
         const data = await res.json();
@@ -46,7 +46,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const backendUrl = process.env.API_BACKEND_URL;
+  const backendUrl = process.env.API_BACKEND_URL || 'https://watchparty-server-2zjh.onrender.com';
 
   if (backendUrl) {
     try {
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
         const data = await res.json();
