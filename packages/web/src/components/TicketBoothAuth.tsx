@@ -22,7 +22,7 @@ export interface TicketBoothAuthProps {
   initialMode?: AuthMode;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
 async function postJson(path: string, body: object) {
   const res = await fetch(`${API}${path}`, {

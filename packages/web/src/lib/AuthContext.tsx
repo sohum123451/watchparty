@@ -38,7 +38,7 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
 async function apiFetch(path: string, opts: RequestInit = {}) {
   const url = `${API}${path}`;

@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { MOVIE_CATALOGUE } from '@watchparty/shared';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

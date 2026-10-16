@@ -42,7 +42,7 @@ export default function LandingPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('watchparty_username', storedName);
       }
-      const API = process.env.NEXT_PUBLIC_API_URL || '';
+      const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
       const res = await fetch(`${API}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
