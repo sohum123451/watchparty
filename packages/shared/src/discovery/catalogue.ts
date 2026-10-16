@@ -491,6 +491,28 @@ export const HOTSTAR_CATALOGUE: Movie[] = [
 
 export const YOUTUBE_FULL_MOVIES: Movie[] = [
   {
+    id: "yt_big_buck_bunny",
+    title: "Big Buck Bunny (Official 4K)",
+    year: 2008,
+    genres: ["Animation", "Comedy", "Short"],
+    rating: 8.0,
+    runtime: 10,
+    language: "en",
+    cast: ["Big Buck Bunny"],
+    director: "Sacha Goedegebure",
+    description: "The classic Blender open source animated masterpiece in full 4K, globally unrestricted for streaming.",
+    posterUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/800px-Big_buck_bunny_poster_big.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    playableUrl: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    youtubeId: "aqz-KE-bpKQ",
+    provider: "youtube",
+    platform: "youtube",
+    isFree: true,
+    trendingScore: 99,
+    accentColor: "#FF0000",
+    textColor: "#F3E9DC",
+  },
+  {
     id: "yt_kung_fury",
     title: "Kung Fury (Official Full Movie)",
     year: 2015,

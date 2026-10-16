@@ -110,7 +110,7 @@ export function TheatreAuditorium({
   const sendRef = useRef<(msg: any) => void>(() => {});
   const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('youtube');
   const providerRef = useRef<'html5' | 'youtube' | 'screenshare'>('youtube');
-  const [youtubeId, setYoutubeId] = useState<string | null>('bS5P_LAqiVg');
+  const [youtubeId, setYoutubeId] = useState<string | null>('aqz-KE-bpKQ');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const isScreenSharingRef = useRef(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -119,8 +119,8 @@ export function TheatreAuditorium({
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
-  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=bS5P_LAqiVg');
-  const [videoTitle, setVideoTitle] = useState('Kung Fury (Official Full Movie)');
+  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
+  const [videoTitle, setVideoTitle] = useState('Big Buck Bunny (Official 4K)');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -299,10 +299,10 @@ export function TheatreAuditorium({
           let title = snap.playback.title;
 
           if (vid === 'big_buck_bunny' || !vid) {
-            vid = 'bS5P_LAqiVg';
+            vid = 'aqz-KE-bpKQ';
             prov = 'youtube';
-            srcRef = 'https://www.youtube.com/watch?v=bS5P_LAqiVg';
-            title = 'Kung Fury (Official Full Movie)';
+            srcRef = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+            title = 'Big Buck Bunny (Official 4K)';
           }
 
           const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === vid || m.youtubeId === vid);
@@ -361,10 +361,10 @@ export function TheatreAuditorium({
           let title = pb.title;
 
           if (vid === 'big_buck_bunny' || !vid) {
-            vid = 'bS5P_LAqiVg';
+            vid = 'aqz-KE-bpKQ';
             prov = 'youtube';
-            srcRef = 'https://www.youtube.com/watch?v=bS5P_LAqiVg';
-            title = 'Kung Fury (Official Full Movie)';
+            srcRef = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+            title = 'Big Buck Bunny (Official 4K)';
           }
 
           const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === vid || m.youtubeId === vid);
@@ -1217,7 +1217,7 @@ export function TheatreAuditorium({
             {provider === 'youtube' && youtubeId ? (
               <iframe
                 id="yt-player-frame"
-                src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&autoplay=1&playsinline=1`}
+                src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1${typeof window !== 'undefined' ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`}
                 title={videoTitle || 'YouTube Video'}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
