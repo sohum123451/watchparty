@@ -20,6 +20,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@watchparty/shared": [
+        "../shared/src/index.ts"
+      ],
+      "@watchparty/client": [
+        "../client/src/index.ts"
       ]
     },
     "plugins": [
