@@ -24,6 +24,7 @@ export interface SourcePickerSheetProps {
   onClose: () => void;
   onSelectSource: (source: SourceSelection) => void;
   onAddToQueue?: (source: SourceSelection) => void;
+  onStartScreenShare?: () => void;
   roomCode: string;
 }
 
@@ -34,6 +35,7 @@ export function SourcePickerSheet({
   onClose,
   onSelectSource,
   onAddToQueue,
+  onStartScreenShare,
   roomCode,
 }: SourcePickerSheetProps) {
   const [activeTab, setActiveTab] = useState<TabType>('library');
@@ -98,6 +100,47 @@ export function SourcePickerSheet({
     setResolving(true);
     setResolveError(null);
     setResolvedSource(null);
+
+    // Instant client-side resolution for YouTube
+    const ytMatch = cleanUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    if (ytMatch) {
+      const id = ytMatch[1];
+      setResolvedSource({
+        videoId: id,
+        provider: 'youtube',
+        sourceRef: `https://www.youtube.com/watch?v=${id}`,
+        title: `YouTube Video (${id})`,
+        thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+      });
+      // Optionally fetch real video title via /api/resolve
+      fetch('/api/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: cleanUrl }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.descriptor) setResolvedSource(data.descriptor);
+        })
+        .catch(() => {});
+
+      setResolving(false);
+      return;
+    }
+
+    // Direct video stream / MP4 / WebM / HLS
+    const isDirectVideo = cleanUrl.match(/\.(mp4|webm|m3u8|mov|ogg)($|\?)/i);
+    if (isDirectVideo) {
+      const fileName = cleanUrl.split('/').pop()?.split('?')[0] || 'Web Video Stream';
+      setResolvedSource({
+        videoId: `stream_${Date.now()}`,
+        provider: 'html5',
+        sourceRef: cleanUrl,
+        title: decodeURIComponent(fileName),
+      });
+      setResolving(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/resolve', {
@@ -386,23 +429,29 @@ export function SourcePickerSheet({
           {/* TAB 4: Streaming Platforms */}
           {activeTab === 'platforms' && (
             <div className="space-y-4">
-              {!hasExtension && (
-                <div className="p-3.5 bg-[#FF9F1C]/10 border border-[#FF9F1C]/40 rounded-xl flex items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="font-bold text-[#FF9F1C] block">Browser Extension Recommended</span>
-                    <span className="text-[#A89B8C]">
-                      Install the WatchParty Stream Synchronizer extension to automatically sync playback while using your own legitimate streaming accounts.
-                    </span>
-                  </div>
-                  <a
-                    href="/extension"
-                    target="_blank"
-                    className="px-3 py-1.5 bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs rounded-full whitespace-nowrap hover:brightness-105 transition-all no-underline inline-block flex-shrink-0"
-                  >
-                    Install extension
-                  </a>
+              {/* PRIMARY ZERO-EXTENSION STREAMING OPTION */}
+              <div className="p-4 bg-[#2EC4B6]/10 border border-[#2EC4B6]/40 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-[#2EC4B6] text-sm block mb-1">
+                    📺 Stream Tab with Audio (No Extension Needed)
+                  </span>
+                  <span className="text-[#A89B8C] leading-relaxed block">
+                    Open Netflix, JioHotstar, Prime Video, or any streaming tab in your browser, check &quot;Share tab audio&quot;, and stream it directly to everyone in your cinema room!
+                  </span>
                 </div>
-              )}
+                {onStartScreenShare && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onStartScreenShare();
+                      onClose();
+                    }}
+                    className="px-4 py-2.5 bg-[#2EC4B6] hover:brightness-110 active:scale-95 text-[#0E0B09] font-bold text-xs rounded-full whitespace-nowrap transition-all border-none cursor-pointer flex-shrink-0"
+                  >
+                    Start Tab Stream
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
@@ -410,19 +459,42 @@ export function SourcePickerSheet({
                   { name: 'JioHotstar', url: 'https://www.hotstar.com', color: '#0F1014' },
                   { name: 'Prime Video', url: 'https://www.primevideo.com', color: '#00A8E1' },
                   { name: 'Disney+', url: 'https://www.disneyplus.com', color: '#113CCF' },
-                  { name: 'YouTube', url: 'https://www.youtube.com', color: '#FF0000' },
+                  { name: 'YouTube', url: 'https://www.youtube.com', color: '#FF0000', isYouTube: true },
                   { name: 'Max', url: 'https://www.max.com', color: '#002BE7' },
                 ].map((plat) => (
                   <button
                     key={plat.name}
                     type="button"
-                    onClick={() => handleOpenPlatform(plat.name, plat.url)}
+                    onClick={() => {
+                      if (plat.isYouTube) {
+                        setActiveTab('link');
+                        setUrlInput('https://www.youtube.com/watch?v=');
+                      } else {
+                        handleOpenPlatform(plat.name, plat.url);
+                      }
+                    }}
                     className="p-4 bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between min-h-[90px]"
                   >
-                    <span className="text-xs font-mono text-[#A89B8C] uppercase tracking-wider">Sync with account</span>
+                    <span className="text-[11px] font-mono text-[#A89B8C] uppercase tracking-wider">
+                      {plat.isYouTube ? 'Direct Embed (No Ext)' : 'Open Service'}
+                    </span>
                     <span className="font-display font-semibold text-lg text-[#F3E9DC]">{plat.name}</span>
                   </button>
                 ))}
+              </div>
+
+              {/* Secondary Extension Info */}
+              <div className="p-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl text-[11px] text-[#A89B8C] flex items-center justify-between gap-3">
+                <span>
+                  Tip: For individual DRM synchronization where every friend logs in to their own account, you can also use the browser extension.
+                </span>
+                <a
+                  href="/extension"
+                  target="_blank"
+                  className="text-[#FF9F1C] font-semibold hover:underline whitespace-nowrap"
+                >
+                  View Extension →
+                </a>
               </div>
             </div>
           )}

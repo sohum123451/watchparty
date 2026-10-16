@@ -51,6 +51,14 @@ function getMemberPalette(userId?: string) {
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
+function extractYouTubeId(urlOrId: string): string | null {
+  if (!urlOrId) return null;
+  const match = urlOrId.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+  if (match) return match[1];
+  if (/^[\w-]{11}$/.test(urlOrId) && !urlOrId.includes('.') && !urlOrId.startsWith('room_') && !urlOrId.startsWith('user_') && !urlOrId.startsWith('stream_')) return urlOrId;
+  return null;
+}
+
 export function TheatreAuditorium({
   roomCode,
   className = '',
@@ -82,6 +90,15 @@ export function TheatreAuditorium({
 
   // ── Video & Playback ───────────────────────────────────────────────────────
   const videoRef = useRef<HTMLVideoElement>(null);
+  const screenContainerRef = useRef<HTMLDivElement>(null);
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const sendRef = useRef<(msg: any) => void>(() => {});
+  const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('html5');
+  const [youtubeId, setYoutubeId] = useState<string | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
   const [videoSrc, setVideoSrc] = useState(
     MOVIE_CATALOGUE[0]?.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
   );
@@ -96,6 +113,34 @@ export function TheatreAuditorium({
   const playbackRef = useRef<any>(null);
   const seqRef = useRef(1);
   const nextSeq = () => ++seqRef.current;
+
+  // YouTube postMessage command dispatcher
+  const sendYouTubeCommand = useCallback((func: string, args: any[] = []) => {
+    const iframe = document.getElementById('yt-player-frame') as HTMLIFrameElement | null;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args }),
+        '*'
+      );
+    }
+  }, []);
+
+  // Listen for YouTube IFrame player state updates
+  useEffect(() => {
+    const handleWindowMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data?.event === 'infoDelivery' && data?.info) {
+          if (typeof data.info.currentTime === 'number') setCurrentTime(data.info.currentTime);
+          if (typeof data.info.duration === 'number' && data.info.duration > 0) setDuration(data.info.duration);
+          if (data.info.playerState === 1) setIsPlaying(true);
+          else if (data.info.playerState === 2) setIsPlaying(false);
+        }
+      } catch {}
+    };
+    window.addEventListener('message', handleWindowMessage);
+    return () => window.removeEventListener('message', handleWindowMessage);
+  }, []);
 
   // ── Social ─────────────────────────────────────────────────────────────────
   const [chatMessages, setChatMessages] = useState<ChatEntry[]>([]);
@@ -146,23 +191,43 @@ export function TheatreAuditorium({
         if (snap.playback) {
           playbackRef.current = snap.playback;
           const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === snap.playback.videoId);
-          if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
-          else if (snap.playback.sourceRef) setVideoSrc(snap.playback.sourceRef);
-          setVideoTitle(snap.playback.title || matchedMovie?.title || '');
+          const resolvedUrl = snap.playback.sourceRef || matchedMovie?.videoUrl || '';
+          const ytId = extractYouTubeId(resolvedUrl || snap.playback.videoId);
 
-          if (videoRef.current) {
-            const targetSec = snap.playback.positionMs / 1000;
+          if (ytId || snap.playback.provider === 'youtube') {
+            setProvider('youtube');
+            if (ytId) setYoutubeId(ytId);
+            setVideoTitle(snap.playback.title || 'YouTube Stream');
             if (snap.playback.status === 'playing') {
-              const serverNow = Date.now() + clockOffsetRef.current;
-              const elapsed = Math.max(0, (serverNow - snap.playback.serverTimeMs) / 1000);
-              const currentSec = targetSec + elapsed * (snap.playback.playbackRate || 1.0);
-              videoRef.current.currentTime = currentSec;
-              videoRef.current.play().catch(() => {});
               setIsPlaying(true);
+              sendYouTubeCommand('playVideo');
             } else {
-              videoRef.current.currentTime = targetSec;
-              videoRef.current.pause();
               setIsPlaying(false);
+              sendYouTubeCommand('pauseVideo');
+            }
+          } else if (snap.playback.provider === 'screenshare') {
+            setProvider('screenshare');
+            setVideoTitle(snap.playback.title || 'Live Screen Stream');
+          } else {
+            setProvider('html5');
+            if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
+            else if (snap.playback.sourceRef) setVideoSrc(snap.playback.sourceRef);
+            setVideoTitle(snap.playback.title || matchedMovie?.title || '');
+
+            if (videoRef.current) {
+              const targetSec = snap.playback.positionMs / 1000;
+              if (snap.playback.status === 'playing') {
+                const serverNow = Date.now() + clockOffsetRef.current;
+                const elapsed = Math.max(0, (serverNow - snap.playback.serverTimeMs) / 1000);
+                const currentSec = targetSec + elapsed * (snap.playback.playbackRate || 1.0);
+                videoRef.current.currentTime = currentSec;
+                videoRef.current.play().catch(() => {});
+                setIsPlaying(true);
+              } else {
+                videoRef.current.currentTime = targetSec;
+                videoRef.current.pause();
+                setIsPlaying(false);
+              }
             }
           }
         }
@@ -173,23 +238,47 @@ export function TheatreAuditorium({
         const pb = msg.payload.playback;
         playbackRef.current = pb;
         const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === pb.videoId);
-        if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
-        else if (pb.sourceRef) setVideoSrc(pb.sourceRef);
-        if (pb.title || matchedMovie?.title) setVideoTitle(pb.title || matchedMovie?.title);
+        const resolvedUrl = pb.sourceRef || matchedMovie?.videoUrl || '';
+        const ytId = extractYouTubeId(resolvedUrl || pb.videoId);
 
-        if (videoRef.current) {
+        if (ytId || pb.provider === 'youtube') {
+          setProvider('youtube');
+          if (ytId) setYoutubeId(ytId);
+          if (pb.title) setVideoTitle(pb.title);
+
+          const targetSec = (pb.positionMs || 0) / 1000;
           if (pb.status === 'playing') {
-            const serverNow = Date.now() + clockOffsetRef.current;
-            const elapsed = Math.max(0, (serverNow - pb.serverTimeMs) / 1000);
-            const targetSec = pb.positionMs / 1000 + elapsed * (pb.playbackRate || 1.0);
-            const diff = Math.abs(videoRef.current.currentTime - targetSec);
-            if (diff > 0.4 || videoRef.current.paused) videoRef.current.currentTime = targetSec;
-            videoRef.current.play().catch(() => {});
             setIsPlaying(true);
+            sendYouTubeCommand('playVideo');
+            sendYouTubeCommand('seekTo', [targetSec, true]);
           } else if (pb.status === 'paused') {
-            videoRef.current.currentTime = pb.positionMs / 1000;
-            videoRef.current.pause();
             setIsPlaying(false);
+            sendYouTubeCommand('pauseVideo');
+            sendYouTubeCommand('seekTo', [targetSec, true]);
+          }
+        } else if (pb.provider === 'screenshare') {
+          setProvider('screenshare');
+          if (pb.title) setVideoTitle(pb.title);
+        } else {
+          setProvider('html5');
+          if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
+          else if (pb.sourceRef) setVideoSrc(pb.sourceRef);
+          if (pb.title || matchedMovie?.title) setVideoTitle(pb.title || matchedMovie?.title);
+
+          if (videoRef.current) {
+            if (pb.status === 'playing') {
+              const serverNow = Date.now() + clockOffsetRef.current;
+              const elapsed = Math.max(0, (serverNow - pb.serverTimeMs) / 1000);
+              const targetSec = pb.positionMs / 1000 + elapsed * (pb.playbackRate || 1.0);
+              const diff = Math.abs(videoRef.current.currentTime - targetSec);
+              if (diff > 0.4 || videoRef.current.paused) videoRef.current.currentTime = targetSec;
+              videoRef.current.play().catch(() => {});
+              setIsPlaying(true);
+            } else if (pb.status === 'paused') {
+              videoRef.current.currentTime = pb.positionMs / 1000;
+              videoRef.current.pause();
+              setIsPlaying(false);
+            }
           }
         }
         break;
@@ -205,7 +294,108 @@ export function TheatreAuditorium({
           }
           return [...prev, msg.payload.member];
         });
+        if (isScreenSharing && screenStreamRef.current) {
+          initiateSharerPeerConnection(msg.payload.member.userId, screenStreamRef.current);
+        }
         break;
+
+      case 'SCREEN_SHARE_STARTED': {
+        const session = msg.payload;
+        if (session.sharerUserId !== selfUserId) {
+          setProvider('screenshare');
+          setVideoTitle(session.title || 'Live Screen Stream');
+        }
+        break;
+      }
+
+      case 'SCREEN_SHARE_STOPPED': {
+        setProvider('html5');
+        setIsScreenSharing(false);
+        if (videoRef.current) videoRef.current.srcObject = null;
+        peerConnectionsRef.current.forEach((pc) => pc.close());
+        peerConnectionsRef.current.clear();
+        break;
+      }
+
+      case 'WEBRTC_SIGNAL': {
+        const { fromUserId, signalType, signalData } = msg.payload || {};
+        if (!fromUserId) break;
+
+        if (isScreenSharing) {
+          const pc = peerConnectionsRef.current.get(fromUserId);
+          if (pc) {
+            if (signalType === 'answer' && signalData) {
+              pc.setRemoteDescription(new RTCSessionDescription(signalData)).catch(() => {});
+            } else if (signalType === 'ice-candidate' && signalData) {
+              pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+            }
+          }
+        } else {
+          let pc = peerConnectionsRef.current.get(fromUserId);
+          if (!pc && typeof window !== 'undefined' && window.RTCPeerConnection) {
+            pc = new RTCPeerConnection({
+              iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+            });
+            peerConnectionsRef.current.set(fromUserId, pc);
+
+            if (pc.addTransceiver) {
+              pc.addTransceiver('video', { direction: 'recvonly' });
+              pc.addTransceiver('audio', { direction: 'recvonly' });
+            }
+
+            pc.ontrack = (event) => {
+              if (videoRef.current) {
+                if (event.streams && event.streams[0]) {
+                  videoRef.current.srcObject = event.streams[0];
+                } else {
+                  if (!videoRef.current.srcObject && typeof MediaStream !== 'undefined') {
+                    videoRef.current.srcObject = new MediaStream();
+                  }
+                  if (videoRef.current.srcObject instanceof MediaStream) {
+                    videoRef.current.srcObject.addTrack(event.track);
+                  }
+                }
+                videoRef.current.play().catch(() => {});
+              }
+            };
+
+            pc.onicecandidate = (e) => {
+              if (e.candidate) {
+                sendRef.current({
+                  type: 'WEBRTC_SIGNAL',
+                  payload: {
+                    targetUserId: fromUserId,
+                    signalType: 'ice-candidate',
+                    signalData: e.candidate.toJSON(),
+                  },
+                });
+              }
+            };
+          }
+
+          if (pc) {
+            if (signalType === 'offer' && signalData) {
+              pc.setRemoteDescription(new RTCSessionDescription(signalData))
+                .then(() => pc!.createAnswer())
+                .then((answer) => pc!.setLocalDescription(answer))
+                .then(() => {
+                  sendRef.current({
+                    type: 'WEBRTC_SIGNAL',
+                    payload: {
+                      targetUserId: fromUserId,
+                      signalType: 'answer',
+                      signalData: pc!.localDescription,
+                    },
+                  });
+                })
+                .catch((e) => console.warn('WebRTC signal offer handling error', e));
+            } else if (signalType === 'ice-candidate' && signalData) {
+              pc.addIceCandidate(new RTCIceCandidate(signalData)).catch(() => {});
+            }
+          }
+        }
+        break;
+      }
 
       case 'ROOM_MEMBER_LEFT':
         setMembers((prev) => prev.filter((m) => m.userId !== msg.payload.userId));
@@ -279,6 +469,8 @@ export function TheatreAuditorium({
     onMessage: handleMessage,
   });
 
+  sendRef.current = send;
+
   // ── NTP ping interval (runs while socket is open) ─────────────────────────
   useEffect(() => {
     if (connState !== 'connected') return;
@@ -307,8 +499,20 @@ export function TheatreAuditorium({
 
   // ── Playback actions ──────────────────────────────────────────────────────
   const togglePlay = () => {
-    if (!videoRef.current) return;
     const willPlay = !isPlaying;
+
+    if (provider === 'youtube') {
+      sendYouTubeCommand(willPlay ? 'playVideo' : 'pauseVideo');
+      setIsPlaying(willPlay);
+      send({
+        type: willPlay ? 'PLAYBACK_PLAY' : 'PLAYBACK_PAUSE',
+        clientSeq: nextSeq(),
+        payload: { positionMs: Math.round(currentTime * 1000) },
+      });
+      return;
+    }
+
+    if (!videoRef.current) return;
     const posMs = Math.round(videoRef.current.currentTime * 1000);
     if (willPlay) {
       videoRef.current.play().catch(() => {});
@@ -322,9 +526,22 @@ export function TheatreAuditorium({
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current || duration <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+    if (provider === 'youtube') {
+      const targetSec = duration > 0 ? pos * duration : pos * 300;
+      setCurrentTime(targetSec);
+      sendYouTubeCommand('seekTo', [targetSec, true]);
+      send({
+        type: 'PLAYBACK_SEEK',
+        clientSeq: nextSeq(),
+        payload: { targetPositionMs: Math.round(targetSec * 1000), autoPlay: isPlaying },
+      });
+      return;
+    }
+
+    if (!videoRef.current || duration <= 0) return;
     const newTime = pos * duration;
     videoRef.current.currentTime = newTime;
     setCurrentTime(newTime);
@@ -335,8 +552,136 @@ export function TheatreAuditorium({
     });
   };
 
+  // ── WebRTC Sharer Peer Connection Helper ─────────────────────────────────
+  const initiateSharerPeerConnection = useCallback((targetUserId: string, stream: MediaStream) => {
+    if (typeof window === 'undefined' || !window.RTCPeerConnection) return;
+    try {
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+      peerConnectionsRef.current.set(targetUserId, pc);
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          sendRef.current({
+            type: 'WEBRTC_SIGNAL',
+            payload: {
+              targetUserId,
+              signalType: 'ice-candidate',
+              signalData: e.candidate.toJSON(),
+            },
+          });
+        }
+      };
+
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer))
+        .then(() => {
+          sendRef.current({
+            type: 'WEBRTC_SIGNAL',
+            payload: {
+              targetUserId,
+              signalType: 'offer',
+              signalData: pc.localDescription,
+            },
+          });
+        })
+        .catch((e) => console.warn('WebRTC create offer error for', targetUserId, e));
+    } catch (e) {
+      console.warn('Failed to initiate WebRTC connection for', targetUserId, e);
+    }
+  }, []);
+
+  const handleStopScreenShare = useCallback(() => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => {
+        try { t.stop(); } catch {}
+      });
+      screenStreamRef.current = null;
+    }
+    peerConnectionsRef.current.forEach((pc) => pc.close());
+    peerConnectionsRef.current.clear();
+    setIsScreenSharing(false);
+    setProvider('html5');
+    if (videoRef.current) videoRef.current.srcObject = null;
+    sendRef.current({
+      type: 'SCREEN_SHARE_STOP',
+      clientSeq: nextSeq(),
+      payload: { reason: 'user_stopped' },
+    });
+  }, []);
+
+  // ── Screen / Tab Share (No Extension Required) ───────────────────────────
+  const handleStartScreenShare = async () => {
+    try {
+      if (isScreenSharing) {
+        handleStopScreenShare();
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      }).catch(async () => {
+        return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      });
+
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+      setProvider('screenshare');
+      setVideoTitle(`${userName}'s Stream`);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.muted = true; // Local preview is muted to prevent audio feedback loop
+        videoRef.current.play().catch(() => {});
+      }
+
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.addEventListener('ended', () => {
+          handleStopScreenShare();
+        });
+      }
+
+      sendRef.current({
+        type: 'SCREEN_SHARE_START',
+        clientSeq: nextSeq(),
+        payload: {
+          title: `${userName}'s Stream`,
+          hasAudio: stream.getAudioTracks().length > 0,
+        },
+      });
+
+      // Send offer to all current members
+      members.forEach((m) => {
+        if (m.userId !== selfUserId) {
+          initiateSharerPeerConnection(m.userId, stream);
+        }
+      });
+    } catch (err: any) {
+      if (err?.name !== 'NotAllowedError') {
+        console.warn('Screen share cancelled or not allowed', err);
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const el = screenContainerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   const triggerReaction = (emoji = '🔥') => {
-    const posMs = Math.round((videoRef.current?.currentTime || 0) * 1000);
+    const posMs = Math.round((videoRef.current?.currentTime || currentTime || 0) * 1000);
     send({ type: 'REACTION_EMIT', clientSeq: nextSeq(), payload: { emoji, videoTimestampMs: posMs } });
     if (typeof window !== 'undefined' && (window as any).__WATCHPARTY_BURST__) {
       const mySeat = seatRefs.current[selfUserId] || Object.values(seatRefs.current)[0];
@@ -387,13 +732,22 @@ export function TheatreAuditorium({
 
   const handleSelectSource = (src: SourceSelection) => {
     setVideoTitle(src.title);
-    if (src.sourceRef) setVideoSrc(src.sourceRef);
+    const ytId = extractYouTubeId(src.sourceRef || src.videoId);
+
+    if (ytId || src.provider === 'youtube') {
+      setProvider('youtube');
+      if (ytId) setYoutubeId(ytId);
+    } else {
+      setProvider('html5');
+      if (src.sourceRef) setVideoSrc(src.sourceRef);
+    }
+
     send({
       type: 'PLAYBACK_CHANGE_VIDEO',
       clientSeq: nextSeq(),
       payload: {
-        videoId: src.videoId,
-        provider: src.provider || 'html5',
+        videoId: ytId || src.videoId,
+        provider: ytId ? 'youtube' : (src.provider || 'html5'),
         sourceRef: src.sourceRef,
         title: src.title,
         autoPlay: true,
@@ -577,6 +931,20 @@ export function TheatreAuditorium({
 
           <button
             type="button"
+            onClick={handleStartScreenShare}
+            className={`flex items-center gap-1.5 font-ui text-xs sm:text-[13px] border rounded-full px-3.5 py-2 cursor-pointer transition-all ${
+              isScreenSharing
+                ? 'bg-[#E4572E] text-[#0E0B09] border-[#E4572E] font-bold animate-pulse'
+                : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] hover:border-[#2EC4B6] text-[#2EC4B6]'
+            }`}
+            title="Stream your Netflix, Hotstar, Prime Video or browser tab with audio"
+          >
+            <span>{isScreenSharing ? '⏹' : '📺'}</span>
+            <span>{isScreenSharing ? 'Stop Stream' : 'Stream Tab'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowSourcePicker(true)}
             className="flex items-center gap-1.5 font-ui text-xs sm:text-[13px] bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-[#F3E9DC] px-3.5 py-2 rounded-full cursor-pointer transition-colors"
             title="Add media source"
@@ -601,47 +969,98 @@ export function TheatreAuditorium({
         <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-0 overflow-y-auto">
           {/* THE SCREEN */}
           <div
+            ref={screenContainerRef}
             data-playing={isPlaying ? 'true' : 'false'}
-            className="relative w-full aspect-video max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto"
+            className="relative w-full aspect-video max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto shadow-[0_0_50px_rgba(0,0,0,0.8),0_0_80px_rgba(255,159,28,0.08)]"
           >
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              playsInline
-              muted
-              onTimeUpdate={() => { if (videoRef.current) setCurrentTime(videoRef.current.currentTime); }}
-              onLoadedMetadata={() => { if (videoRef.current?.duration) setDuration(videoRef.current.duration); }}
-              onClick={togglePlay}
-              className={`w-full h-full object-contain cursor-pointer ${isPlaying ? 'opacity-100' : 'opacity-25'}`}
-            />
+            {/* Ambient source badge */}
+            <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-[#0E0B09]/85 backdrop-blur-md border border-[#3A2E26] text-[#F3E9DC] font-mono text-[11px] px-3 py-1 rounded-full pointer-events-none">
+              {provider === 'youtube' ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#E4572E] animate-pulse" />
+                  <span className="text-[#FF9F1C] font-semibold">YouTube Direct</span>
+                </>
+              ) : provider === 'screenshare' ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#2EC4B6] animate-pulse" />
+                  <span className="text-[#2EC4B6] font-semibold">Live Tab Stream (Audio + Video)</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#FF9F1C]" />
+                  <span className="text-[#A89B8C]">Cinema Player</span>
+                </>
+              )}
+            </div>
 
-            {!isPlaying && (
+            {/* Quick Unmute pill if playing muted */}
+            {isMuted && (isPlaying || provider === 'screenshare') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMuted(false);
+                  if (videoRef.current) videoRef.current.muted = false;
+                }}
+                className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-[#FF9F1C] hover:brightness-110 active:scale-95 text-[#0E0B09] font-bold font-ui text-xs px-3.5 py-1.5 rounded-full shadow-lg cursor-pointer border-none transition-all"
+              >
+                <span>🔊</span>
+                <span>Unmute Audio</span>
+              </button>
+            )}
+
+            {/* Video or YouTube Frame */}
+            {provider === 'youtube' && youtubeId ? (
+              <iframe
+                id="yt-player-frame"
+                src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&autoplay=1&playsinline=1`}
+                title={videoTitle || 'YouTube Video'}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full border-0 rounded-[14px]"
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={provider === 'screenshare' ? undefined : videoSrc}
+                playsInline
+                muted={isMuted}
+                onTimeUpdate={() => { if (videoRef.current) setCurrentTime(videoRef.current.currentTime); }}
+                onLoadedMetadata={() => { if (videoRef.current?.duration) setDuration(videoRef.current.duration); }}
+                onClick={togglePlay}
+                className={`w-full h-full object-contain cursor-pointer transition-opacity duration-300 ${
+                  isPlaying || provider === 'screenshare' ? 'opacity-100' : 'opacity-30'
+                }`}
+              />
+            )}
+
+            {/* Centered Play Button overlay for HTML5 when paused */}
+            {provider !== 'youtube' && !isPlaying && provider !== 'screenshare' && (
               <div
                 data-testid="play-overlay"
                 onClick={togglePlay}
-                className="absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 cursor-pointer pointer-events-auto"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 cursor-pointer pointer-events-auto bg-black/30 backdrop-blur-[2px]"
               >
-                <span className="w-16 h-16 sm:w-[84px] sm:h-[84px] rounded-full border-2 border-[#F3E9DC] flex items-center justify-center hover:scale-105 transition-transform bg-black/40">
+                <span className="w-16 h-16 sm:w-[84px] sm:h-[84px] rounded-full border-2 border-[#F3E9DC] flex items-center justify-center hover:scale-105 transition-transform bg-black/60 shadow-xl">
                   <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="#F3E9DC" className="ml-1">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </span>
                 {videoTitle && (
-                  <div className="font-display italic font-medium text-2xl sm:text-4xl lg:text-[48px] text-[#F3E9DC] text-center px-4">
+                  <div className="font-display italic font-medium text-2xl sm:text-4xl lg:text-[44px] text-[#F3E9DC] text-center px-4 max-w-2xl drop-shadow-md">
                     {videoTitle}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Bottom controls */}
-            <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '14px', pointerEvents: 'auto' }}>
+            {/* Bottom controls bar */}
+            <div className="absolute left-4 right-4 sm:left-5 sm:right-5 bottom-3 pointer-events-auto z-20">
               {/* Heatmap */}
-              <div style={{ display: 'flex', height: '12px', borderRadius: '3px', overflow: 'hidden', gap: '2px' }}>
+              <div style={{ display: 'flex', height: '10px', borderRadius: '3px', overflow: 'hidden', gap: '2px' }}>
                 {heatmapSegments.map((seg) => (
                   <div
                     key={seg.id}
-                    style={{ flex: 1, height: '12px', backgroundColor: seg.bg, transition: 'background-color 0.3s ease' }}
+                    style={{ flex: 1, height: '10px', backgroundColor: seg.bg, transition: 'background-color 0.3s ease' }}
                     title={seg.count > 0 ? `${seg.count} reaction${seg.count > 1 ? 's' : ''}` : undefined}
                   />
                 ))}
@@ -651,21 +1070,56 @@ export function TheatreAuditorium({
               <div
                 data-testid="scrubber-track"
                 onClick={handleSeek}
-                style={{ position: 'relative', height: '6px', borderRadius: '3px', background: '#2A211B', marginTop: '8px', cursor: 'pointer' }}
+                style={{ position: 'relative', height: '6px', borderRadius: '3px', background: '#2A211B', marginTop: '6px', cursor: 'pointer' }}
               >
-                <div style={{ width: `${progressPercent}%`, height: '6px', borderRadius: '3px', background: '#F3E9DC' }} />
+                <div style={{ width: `${progressPercent}%`, height: '6px', borderRadius: '3px', background: '#FF9F1C' }} />
                 <span
                   style={{
                     position: 'absolute', left: `${progressPercent}%`, top: '-4px',
                     width: '14px', height: '14px', borderRadius: '50%', background: '#F3E9DC', transform: 'translateX(-50%)',
+                    boxShadow: '0 0 8px rgba(0,0,0,0.7)',
                   }}
                 />
               </div>
 
-              {/* Timecodes */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px' }}>
-                <span>{formatMinSec(currentTime)}</span>
-                <span style={{ color: '#A89B8C' }}>{formatMinSec(duration)}</span>
+              {/* Timecodes & player utilities */}
+              <div className="flex items-center justify-between mt-2 font-mono text-xs text-[#A89B8C]">
+                <div className="flex items-center gap-3">
+                  {provider !== 'youtube' && (
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm font-bold"
+                      title={isPlaying ? 'Pause' : 'Play'}
+                    >
+                      {isPlaying ? '⏸' : '▶'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMuted = !isMuted;
+                      setIsMuted(nextMuted);
+                      if (videoRef.current) videoRef.current.muted = nextMuted;
+                    }}
+                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
+                    title={isMuted ? 'Unmute' : 'Mute'}
+                  >
+                    {isMuted ? '🔇' : '🔊'}
+                  </button>
+                  <span>{formatMinSec(currentTime)} / {formatMinSec(duration)}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
+                    title="Fullscreen mode"
+                  >
+                    ⛶
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -753,6 +1207,7 @@ export function TheatreAuditorium({
         onClose={() => setShowSourcePicker(false)}
         onSelectSource={handleSelectSource}
         onAddToQueue={handleAddToQueueFromPicker}
+        onStartScreenShare={handleStartScreenShare}
         roomCode={roomCode}
       />
     </div>
