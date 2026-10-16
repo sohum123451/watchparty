@@ -88,12 +88,8 @@ if (env.DATABASE_URL) {
     console.error("=======================================================\n");
     process.exit(1);
   }
-} else if (env.NODE_ENV === "production") {
-  logger.error("[Startup] FATAL: Missing required DATABASE_URL environment variable in production.");
-  console.error("\n=======================================================");
-  console.error("FATAL: MISSING DATABASE_URL IN PRODUCTION ENVIRONMENT");
-  console.error("=======================================================\n");
-  process.exit(1);
+} else {
+  logger.info("[Startup] No DATABASE_URL provided. Operating in Zero-Ops In-Memory & Durable Storage mode.");
 }
 
 let redis: IRedisService | undefined;
