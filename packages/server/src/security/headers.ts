@@ -14,20 +14,21 @@ export class SecurityMiddleware {
   private allowInlineScripts: boolean;
 
   constructor(options: SecurityOptions = {}) {
-    const isDev = process.env.NODE_ENV !== "production";
-    const defaultOrigins = isDev
-      ? [
-          "http://localhost:3000",
-          "http://localhost:3001",
-          "http://127.0.0.1:3000",
-          "http://127.0.0.1:3001",
-        ]
-      : [];
+    const defaultOrigins = [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001",
+      "https://*.vercel.app",
+      "https://*.onrender.com",
+      "https://*.pinggy.net",
+      "https://*.pinggy-free.link",
+    ];
 
-    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || "";
-    const envOrigins = allowedOriginsEnv
-      ? allowedOriginsEnv.split(",").map((o) => o.trim()).filter(Boolean)
-      : [];
+    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || "*";
+    const envOrigins = allowedOriginsEnv === "*"
+      ? ["*"]
+      : allowedOriginsEnv.split(",").map((o) => o.trim()).filter(Boolean);
 
     if (process.env.BASE_URL) {
       try {
@@ -77,16 +78,21 @@ export class SecurityMiddleware {
       } catch {}
     }
 
-    // If explicit ALLOWED_ORIGINS or CORS_ORIGIN is configured, do not allow arbitrary unlisted origins
-    const hasExplicitAllowedOrigins = Boolean(process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN);
-    if (!hasExplicitAllowedOrigins) {
-      try {
-        const hostname = new URL(origin).hostname.toLowerCase();
-        if (hostname.endsWith(".sslip.io") || hostname.endsWith(".nip.io")) {
-          return true;
-        }
-      } catch {}
-    }
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname.endsWith(".vercel.app") ||
+        hostname.endsWith(".onrender.com") ||
+        hostname.endsWith(".pinggy.net") ||
+        hostname.endsWith(".pinggy-free.link") ||
+        hostname.endsWith(".sslip.io") ||
+        hostname.endsWith(".nip.io")
+      ) {
+        return true;
+      }
+    } catch {}
 
     for (const pattern of this.allowedWildcardPatterns) {
       if (pattern.test(origin)) return true;

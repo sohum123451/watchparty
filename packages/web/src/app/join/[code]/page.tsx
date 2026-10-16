@@ -11,13 +11,18 @@ export default async function JoinCodePage({
   const decodedCode = decodeURIComponent(code).toUpperCase().trim();
 
   let roomData: any = null;
-  const apiUrl = process.env.API_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  try {
-    const res = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(decodedCode)}`, { cache: 'no-store' });
-    if (res.ok) {
-      roomData = await res.json();
-    }
-  } catch {}
+  const apiUrl = process.env.API_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) {
+    try {
+      const res = await fetch(`${apiUrl}/api/rooms/${encodeURIComponent(decodedCode)}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(2000),
+      });
+      if (res.ok) {
+        roomData = await res.json();
+      }
+    } catch {}
+  }
 
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-12">

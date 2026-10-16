@@ -64,7 +64,7 @@ export const envSchema = z
 
     // Admin & Access Control
     ADMIN_SECRET: z.string().min(16).default("super-secret-admin-token-at-least-16-chars"),
-    REGISTRATION_MODE: z.enum(["public", "invite_only", "disabled"]).default("invite_only"),
+    REGISTRATION_MODE: z.enum(["public", "invite_only", "disabled"]).default("public"),
     REGISTRATION_INVITE_CODE: z.string().optional(),
 
     // Observability & Sentry Error Tracking
@@ -124,11 +124,26 @@ export const envSchema = z
 
 export type EnvConfig = z.infer<typeof envSchema>;
 
+import crypto from "node:crypto";
+
 /**
  * Validates process.env against schema. Fails fast on startup with human-readable error descriptions.
  */
 export function validateEnv(rawEnv: Record<string, string | undefined> = process.env): EnvConfig {
-  const result = envSchema.safeParse(rawEnv);
+  const envCopy = { ...rawEnv };
+  if (envCopy.NODE_ENV === "production") {
+    if (!envCopy.JWT_SECRET || envCopy.JWT_SECRET === DEFAULT_JWT_SECRET) {
+      envCopy.JWT_SECRET = crypto.randomBytes(32).toString("base64");
+    }
+    if (!envCopy.ENCRYPTION_KEY || envCopy.ENCRYPTION_KEY === DEFAULT_ENCRYPTION_KEY) {
+      envCopy.ENCRYPTION_KEY = crypto.randomBytes(32).toString("hex");
+    }
+    if (!envCopy.ADMIN_SECRET || envCopy.ADMIN_SECRET === "super-secret-admin-token-at-least-16-chars") {
+      envCopy.ADMIN_SECRET = crypto.randomBytes(24).toString("hex");
+    }
+  }
+
+  const result = envSchema.safeParse(envCopy);
 
   if (!result.success) {
     const errorMessages = result.error.issues.map((i) => ` ✗ [${i.path.join(".")}]: ${i.message}`).join("\n");

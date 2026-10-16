@@ -95,8 +95,7 @@ function TicketBoothAuthInner({ initialMode = 'signup' }: TicketBoothAuthProps) 
     setLoading(true);
     try {
       await signUp(email, password, displayName || email.split('@')[0], inviteCode || undefined);
-      setSuccessMsg('Check your email to verify your account.');
-      setMode('verify');
+      redirect();
     } catch (err: any) {
       setErrorMsg(err.message || 'Sign up failed');
       shake(passwordRef);
@@ -254,9 +253,9 @@ function TicketBoothAuthInner({ initialMode = 'signup' }: TicketBoothAuthProps) 
 
                 {mode === 'signup' && (
                   <div>
-                    <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Invite code</label>
+                    <label className="block text-xs font-mono text-[#A89B8C] uppercase tracking-wider mb-1.5">Invite code (optional)</label>
                     <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
-                      placeholder="Required for sign-up"
+                      placeholder="Enter invite code if you have one"
                       className="w-full bg-[#261E19] border border-[#3A2E26] rounded-sm px-3.5 py-2.5 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:border-[#FF9F1C] outline-none font-mono uppercase tracking-wider" />
                   </div>
                 )}

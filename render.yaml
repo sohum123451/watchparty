@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: watchparty-server
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build:shared && npm run build:server
+    startCommand: npm run start:server
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: REGISTRATION_MODE
+        value: public
+      - key: CORS_ORIGIN
+        value: "*"

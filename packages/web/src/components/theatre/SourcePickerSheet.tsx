@@ -109,7 +109,7 @@ export function SourcePickerSheet({
       if (!res.ok) {
         throw new Error(data?.error || `Resolution failed (${res.status})`);
       }
-      setResolvedSource(data);
+      setResolvedSource(data.descriptor || data);
     } catch (err: any) {
       setResolveError(err.message || 'Could not resolve URL');
     } finally {

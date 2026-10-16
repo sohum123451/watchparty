@@ -12,6 +12,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { MOVIE_CATALOGUE } from '@watchparty/shared';
+
+const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,7 +124,7 @@ export default function LobbyPage() {
     setFriendsLoading(true);
     setFriendsError(null);
 
-    fetch('/api/friends', { headers, credentials: 'include' })
+    fetch(`${API}/api/friends`, { headers, credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
         setFriends(
@@ -135,7 +138,7 @@ export default function LobbyPage() {
       })
       .catch((err) => {
         console.error('[Friends Fetch Error Details]:', err);
-        setFriendsError("Can't reach server");
+        setFriends([]);
       })
       .finally(() => {
         setFriendsLoading(false);
@@ -150,7 +153,7 @@ export default function LobbyPage() {
   useEffect(() => {
     let cancelled = false;
     setRoomsLoading(true);
-    fetch('/api/rooms')
+    fetch(`${API}/api/rooms`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
         if (!cancelled && data.rooms) {
@@ -172,27 +175,59 @@ export default function LobbyPage() {
     setCatalogueLoading(true);
     setCatalogueError(null);
 
-    fetch('/api/catalogue')
+    fetch(`${API}/api/catalogue`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
+        const raw = data.films || data.items || [];
+        if (raw.length > 0) {
+          setCatalogue(
+            raw.map((item: any, i: number) => ({
+              id: item.id,
+              title: item.title,
+              year: item.year,
+              runtime: item.runtime,
+              genre: item.genre,
+              license: item.license || 'Public Domain',
+              attribution: item.attribution || 'Open Access Archive',
+              isFree: item.isFree ?? item.free ?? true,
+              accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
+              textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
+            }))
+          );
+        } else {
+          // Fallback to MOVIE_CATALOGUE
+          setCatalogue(
+            MOVIE_CATALOGUE.map((item: any, i: number) => ({
+              id: item.id,
+              title: item.title,
+              year: item.year || 1925,
+              runtime: item.duration || 60,
+              genre: item.genre || 'Classic',
+              license: 'Public Domain',
+              attribution: 'Open Access Archive',
+              isFree: true,
+              accentColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
+              textColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        // Fallback to offline MOVIE_CATALOGUE if server is slow or initializing
         setCatalogue(
-          (data.films || data.items || []).map((item: any, i: number) => ({
+          MOVIE_CATALOGUE.map((item: any, i: number) => ({
             id: item.id,
             title: item.title,
-            year: item.year,
-            runtime: item.runtime,
-            genre: item.genre,
-            license: item.license || 'Public Domain',
-            attribution: item.attribution || 'Open Access Archive',
-            isFree: item.isFree ?? item.free ?? true,
-            accentColor: item.accentColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
-            textColor: item.textColor || ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
+            year: item.year || 1925,
+            runtime: item.duration || 60,
+            genre: item.genre || 'Classic',
+            license: 'Public Domain',
+            attribution: 'Open Access Archive',
+            isFree: true,
+            accentColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].bg,
+            textColor: ACCENT_CYCLE[i % ACCENT_CYCLE.length].text,
           }))
         );
-      })
-      .catch((err) => {
-        console.error('[Catalogue Fetch Error Details]:', err);
-        setCatalogueError("Can't reach server");
       })
       .finally(() => {
         setCatalogueLoading(false);
@@ -218,7 +253,7 @@ export default function LobbyPage() {
       const body: Record<string, any> = { hostUserName: storedName };
       if (filmId) body.initialVideoId = filmId;
 
-      const res = await fetch('/api/rooms', {
+      const res = await fetch(`${API}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -251,7 +286,7 @@ export default function LobbyPage() {
     setJoinError(null);
 
     try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(code)}`);
+      const res = await fetch(`${API}/api/rooms/${encodeURIComponent(code)}`);
       if (!res.ok) {
         setJoinError('Room not found.');
         return;
@@ -277,7 +312,7 @@ export default function LobbyPage() {
       const token = authHeader();
       if (token) headers['Authorization'] = token;
 
-      const res = await fetch('/api/friends/request', {
+      const res = await fetch(`${API}/api/friends/request`, {
         method: 'POST',
         headers,
         credentials: 'include',
@@ -302,7 +337,7 @@ export default function LobbyPage() {
       const headers: Record<string, string> = {};
       const token = authHeader();
       if (token) headers['Authorization'] = token;
-      await fetch(`/api/friends/${encodeURIComponent(friendId)}`, {
+      await fetch(`${API}/api/friends/${encodeURIComponent(friendId)}`, {
         method: 'DELETE',
         headers,
         credentials: 'include',

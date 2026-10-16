@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "db:migrate": "node dist/db/migrate.js",
     "db:migrate:dev": "tsx src/db/migrate.ts",
+    "db:seed": "node dist/db/seedCatalogue.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

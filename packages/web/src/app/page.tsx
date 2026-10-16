@@ -42,7 +42,8 @@ export default function LandingPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('watchparty_username', storedName);
       }
-      const res = await fetch('/api/rooms', {
+      const API = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${API}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hostUserName: storedName }),
