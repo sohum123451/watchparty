@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install && npm run build:shared && npm run build:server
-    startCommand: npm run start:server
+    buildCommand: npm install --include=dev && npm run build:shared && npm run build:server
+    startCommand: node packages/server/dist/index.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:
