@@ -74,6 +74,18 @@ export class StreamingPageAdapter implements PlayerAdapter {
 
   public async play(): Promise<void> {
     this.markProgrammaticAction();
+    if (typeof window !== "undefined" && window.location.hostname.includes("netflix.com")) {
+      try {
+        const videoPlayer = (window as any).netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+        const sessionId = videoPlayer?.getAllPlayerSessionIds?.()[0];
+        const player = sessionId ? videoPlayer?.getVideoPlayerBySessionId(sessionId) : null;
+        if (player) {
+          const res = player.play();
+          if (res instanceof Promise) res.catch(() => {});
+          return;
+        }
+      } catch {}
+    }
     try {
       await this.media.play();
     } catch (err) {
@@ -83,11 +95,33 @@ export class StreamingPageAdapter implements PlayerAdapter {
 
   public pause(): void {
     this.markProgrammaticAction();
+    if (typeof window !== "undefined" && window.location.hostname.includes("netflix.com")) {
+      try {
+        const videoPlayer = (window as any).netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+        const sessionId = videoPlayer?.getAllPlayerSessionIds?.()[0];
+        const player = sessionId ? videoPlayer?.getVideoPlayerBySessionId(sessionId) : null;
+        if (player) {
+          player.pause();
+          return;
+        }
+      } catch {}
+    }
     this.media.pause();
   }
 
   public seek(positionMs: number): void {
     this.markProgrammaticAction();
+    if (typeof window !== "undefined" && window.location.hostname.includes("netflix.com")) {
+      try {
+        const videoPlayer = (window as any).netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+        const sessionId = videoPlayer?.getAllPlayerSessionIds?.()[0];
+        const player = sessionId ? videoPlayer?.getVideoPlayerBySessionId(sessionId) : null;
+        if (player) {
+          player.seek(positionMs);
+          return;
+        }
+      } catch {}
+    }
     const targetSeconds = Math.max(0, positionMs / 1000);
     this.media.currentTime = targetSeconds;
   }

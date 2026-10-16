@@ -98,16 +98,34 @@ export function TheatreAuditorium({
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
   const [videoSrc, setVideoSrc] = useState(
     MOVIE_CATALOGUE[0]?.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
   );
-  const [videoTitle, setVideoTitle] = useState('');
+  const [videoTitle, setVideoTitle] = useState(MOVIE_CATALOGUE[0]?.title || 'Big Buck Bunny');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [driftMs, setDriftMs] = useState(0);
   const [showSyncDiagnostics, setShowSyncDiagnostics] = useState(false);
+
+  const handleSubtitleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      let content = (event.target?.result as string) || '';
+      if (file.name.toLowerCase().endsWith('.srt')) {
+        content = 'WEBVTT\n\n' + content.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+      }
+      const blob = new Blob([content], { type: 'text/vtt' });
+      setSubtitleUrl(URL.createObjectURL(blob));
+      setSubtitlesEnabled(true);
+    };
+    reader.readAsText(file);
+  };
 
   const clockOffsetRef = useRef(0);
   const playbackRef = useRef<any>(null);
@@ -1028,9 +1046,19 @@ export function TheatreAuditorium({
                 onLoadedMetadata={() => { if (videoRef.current?.duration) setDuration(videoRef.current.duration); }}
                 onClick={togglePlay}
                 className={`w-full h-full object-contain cursor-pointer transition-opacity duration-300 ${
-                  isPlaying || provider === 'screenshare' ? 'opacity-100' : 'opacity-30'
+                  isPlaying || provider === 'screenshare' ? 'opacity-100' : 'opacity-40'
                 }`}
-              />
+              >
+                {subtitleUrl && subtitlesEnabled && (
+                  <track
+                    kind="subtitles"
+                    src={subtitleUrl}
+                    srcLang="en"
+                    label="Subtitles"
+                    default
+                  />
+                )}
+              </video>
             )}
 
             {/* Centered Play Button overlay for HTML5 when paused */}
@@ -1111,6 +1139,18 @@ export function TheatreAuditorium({
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <label
+                    className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer text-[11px] font-mono border border-[#3A2E26] hover:border-[#FF9F1C] px-2 py-0.5 rounded transition-colors flex items-center gap-1 select-none"
+                    title="Upload subtitles (.srt or .vtt)"
+                  >
+                    <span>CC</span>
+                    <input
+                      type="file"
+                      accept=".srt,.vtt"
+                      onChange={handleSubtitleUpload}
+                      className="hidden"
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={toggleFullscreen}
