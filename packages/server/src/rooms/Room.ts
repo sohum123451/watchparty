@@ -269,7 +269,7 @@ export class Room {
     this.sourceReports = new Map();
     this.urlSafetyChecker = defaultUrlSafetyChecker;
 
-    const initialVideo = config.initialVideoId || "big_buck_bunny";
+    const initialVideo = config.initialVideoId || "bS5P_LAqiVg";
     const now = Date.now();
     this.playback = {
       videoId: initialVideo,
@@ -277,14 +277,17 @@ export class Room {
       positionMs: 0,
       serverTimeMs: now,
       playbackRate: 1.0,
+      provider: "youtube",
+      sourceRef: `https://www.youtube.com/watch?v=${initialVideo}`,
+      title: "Kung Fury (Official Full Movie)",
     };
 
     this.playlist = [
       {
         id: generateId("pl"),
         videoId: initialVideo,
-        title: "Big Buck Bunny (Demo)",
-        durationMs: 596000,
+        title: "Kung Fury (Official Full Movie)",
+        durationMs: 1860000,
         addedByUserId: config.hostUserId,
         addedByUserName: config.hostUserName,
         order: 1000,

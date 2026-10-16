@@ -15,6 +15,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   MOVIE_CATALOGUE,
+  NETFLIX_CATALOGUE,
+  HOTSTAR_CATALOGUE,
+  YOUTUBE_FULL_MOVIES,
   PlaylistItem,
   PollSummary,
   MemberPublicInfo,
@@ -94,15 +97,15 @@ export function TheatreAuditorium({
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const sendRef = useRef<(msg: any) => void>(() => {});
   const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('youtube');
-  const [youtubeId, setYoutubeId] = useState<string | null>('b9EkMc79ZSU');
+  const [youtubeId, setYoutubeId] = useState<string | null>('bS5P_LAqiVg');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
-  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=b9EkMc79ZSU');
-  const [videoTitle, setVideoTitle] = useState('Stranger Things');
+  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=bS5P_LAqiVg');
+  const [videoTitle, setVideoTitle] = useState('Kung Fury (Official Full Movie)');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -252,14 +255,26 @@ export function TheatreAuditorium({
 
         if (snap.playback) {
           playbackRef.current = snap.playback;
-          const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === snap.playback.videoId);
-          const resolvedUrl = snap.playback.sourceRef || matchedMovie?.videoUrl || '';
-          const ytId = extractYouTubeId(resolvedUrl || snap.playback.videoId);
+          let vid = snap.playback.videoId;
+          let prov = snap.playback.provider;
+          let srcRef = snap.playback.sourceRef;
+          let title = snap.playback.title;
 
-          if (ytId || snap.playback.provider === 'youtube') {
+          if (vid === 'big_buck_bunny' || !vid) {
+            vid = 'bS5P_LAqiVg';
+            prov = 'youtube';
+            srcRef = 'https://www.youtube.com/watch?v=bS5P_LAqiVg';
+            title = 'Kung Fury (Official Full Movie)';
+          }
+
+          const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === vid || m.youtubeId === vid);
+          const resolvedUrl = srcRef || matchedMovie?.videoUrl || '';
+          const ytId = extractYouTubeId(resolvedUrl || vid) || (prov === 'youtube' ? vid : null);
+
+          if (ytId || prov === 'youtube') {
             setProvider('youtube');
             if (ytId) setYoutubeId(ytId);
-            setVideoTitle(snap.playback.title || 'YouTube Stream');
+            setVideoTitle(title || matchedMovie?.title || 'YouTube Stream');
             if (snap.playback.status === 'playing') {
               setIsPlaying(true);
               sendYouTubeCommand('playVideo');
@@ -267,14 +282,14 @@ export function TheatreAuditorium({
               setIsPlaying(false);
               sendYouTubeCommand('pauseVideo');
             }
-          } else if (snap.playback.provider === 'screenshare') {
+          } else if (prov === 'screenshare') {
             setProvider('screenshare');
-            setVideoTitle(snap.playback.title || 'Live Screen Stream');
+            setVideoTitle(title || 'Live Screen Stream');
           } else {
             setProvider('html5');
             if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
-            else if (snap.playback.sourceRef) setVideoSrc(snap.playback.sourceRef);
-            setVideoTitle(snap.playback.title || matchedMovie?.title || '');
+            else if (srcRef) setVideoSrc(srcRef);
+            setVideoTitle(title || matchedMovie?.title || '');
 
             if (videoRef.current) {
               const targetSec = snap.playback.positionMs / 1000;
@@ -297,35 +312,46 @@ export function TheatreAuditorium({
       }
 
       case 'PLAYBACK_UPDATE': {
-        const pb = msg.payload.playback;
-        playbackRef.current = pb;
-        const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === pb.videoId);
-        const resolvedUrl = pb.sourceRef || matchedMovie?.videoUrl || '';
-        const ytId = extractYouTubeId(resolvedUrl || pb.videoId);
+        if (pb) {
+          let vid = pb.videoId;
+          let prov = pb.provider;
+          let srcRef = pb.sourceRef;
+          let title = pb.title;
 
-        if (ytId || pb.provider === 'youtube') {
-          setProvider('youtube');
-          if (ytId) setYoutubeId(ytId);
-          if (pb.title) setVideoTitle(pb.title);
-
-          const targetSec = (pb.positionMs || 0) / 1000;
-          if (pb.status === 'playing') {
-            setIsPlaying(true);
-            sendYouTubeCommand('playVideo');
-            sendYouTubeCommand('seekTo', [targetSec, true]);
-          } else if (pb.status === 'paused') {
-            setIsPlaying(false);
-            sendYouTubeCommand('pauseVideo');
-            sendYouTubeCommand('seekTo', [targetSec, true]);
+          if (vid === 'big_buck_bunny' || !vid) {
+            vid = 'bS5P_LAqiVg';
+            prov = 'youtube';
+            srcRef = 'https://www.youtube.com/watch?v=bS5P_LAqiVg';
+            title = 'Kung Fury (Official Full Movie)';
           }
-        } else if (pb.provider === 'screenshare') {
-          setProvider('screenshare');
-          if (pb.title) setVideoTitle(pb.title);
-        } else {
-          setProvider('html5');
-          if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
-          else if (pb.sourceRef) setVideoSrc(pb.sourceRef);
-          if (pb.title || matchedMovie?.title) setVideoTitle(pb.title || matchedMovie?.title);
+
+          const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === vid || m.youtubeId === vid);
+          const resolvedUrl = srcRef || matchedMovie?.videoUrl || '';
+          const ytId = extractYouTubeId(resolvedUrl || vid) || (prov === 'youtube' ? vid : null);
+
+          if (ytId || prov === 'youtube') {
+            setProvider('youtube');
+            if (ytId) setYoutubeId(ytId);
+            if (title) setVideoTitle(title);
+
+            const targetSec = (pb.positionMs || 0) / 1000;
+            if (pb.status === 'playing') {
+              setIsPlaying(true);
+              sendYouTubeCommand('playVideo');
+              sendYouTubeCommand('seekTo', [targetSec, true]);
+            } else if (pb.status === 'paused') {
+              setIsPlaying(false);
+              sendYouTubeCommand('pauseVideo');
+              sendYouTubeCommand('seekTo', [targetSec, true]);
+            }
+          } else if (prov === 'screenshare') {
+            setProvider('screenshare');
+            if (title) setVideoTitle(title);
+          } else {
+            setProvider('html5');
+            if (matchedMovie?.videoUrl) setVideoSrc(matchedMovie.videoUrl);
+            else if (srcRef) setVideoSrc(srcRef);
+            if (title || matchedMovie?.title) setVideoTitle(title || matchedMovie?.title);
 
           if (videoRef.current) {
             if (pb.status === 'playing') {
@@ -342,6 +368,7 @@ export function TheatreAuditorium({
               setIsPlaying(false);
             }
           }
+        }
         }
         break;
       }
@@ -1029,140 +1056,7 @@ export function TheatreAuditorium({
       <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
         {/* Left Column */}
         <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-0 overflow-y-auto">
-          {/* QUICK MEDIA ACTION BAR */}
-          <div className="w-full max-w-[960px] mx-auto mb-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl p-3 flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#FF9F1C]" />
-                <span className="font-mono text-xs text-[#F3E9DC] font-semibold">Quick Co-Watch:</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSourcePickerTab('netflix');
-                    setShowSourcePicker(true);
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-[#E50914]/20 hover:bg-[#E50914]/30 border border-[#E50914]/50 text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <span className="w-2 h-2 rounded-full bg-[#E50914]" />
-                  <span className="font-bold text-[#E50914]">Netflix</span>
-                  <span>(Stranger Things &amp; More)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSourcePickerTab('hotstar');
-                    setShowSourcePicker(true);
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-[#0063E5]/20 hover:bg-[#0063E5]/30 border border-[#0063E5]/50 text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <span className="w-2 h-2 rounded-full bg-[#0063E5]" />
-                  <span className="font-bold text-[#0063E5]">JioHotstar</span>
-                  <span>(Special OPS &amp; Marvel)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSourcePickerTab('youtube');
-                    setShowSourcePicker(true);
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#E4572E] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <span className="text-[#E4572E]">▶</span>
-                  <span>Full Movies</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickYouTubeOpen(!quickYouTubeOpen)}
-                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <span>🔍</span>
-                  <span>Search YouTube</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStartScreenShare}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-ui flex items-center gap-1.5 cursor-pointer transition-all ${
-                    isScreenSharing
-                      ? 'bg-[#E4572E] text-[#0E0B09] border-[#E4572E] font-bold animate-pulse'
-                      : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] hover:border-[#2EC4B6] text-[#2EC4B6]'
-                  }`}
-                  title="Stream your active Netflix, Hotstar, Prime Video or browser tab with audio"
-                >
-                  <span>📺</span>
-                  <span>{isScreenSharing ? 'Stop Stream' : 'Stream Tab with Audio'}</span>
-                </button>
-                <label
-                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors select-none"
-                  title="Load local .srt or .vtt subtitle file (Howard Chung engine)"
-                >
-                  <span className="text-[#FF9F1C]">💬</span>
-                  <span>{subtitleUrl ? 'Subtitles Active' : 'CC Subtitles'}</span>
-                  <input
-                    type="file"
-                    accept=".srt,.vtt"
-                    onChange={handleSubtitleUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
 
-            {/* Quick YouTube Popdown */}
-            {quickYouTubeOpen && (
-              <div className="pt-2 border-t border-[#2A211B] flex flex-col gap-2 animate-in fade-in duration-150">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleApplyQuickYouTube(quickYouTubeUrl);
-                  }}
-                  className="flex gap-2"
-                >
-                  <input
-                    type="url"
-                    placeholder="Paste YouTube link (e.g. https://www.youtube.com/watch?v=...)"
-                    value={quickYouTubeUrl}
-                    onChange={(e) => setQuickYouTubeUrl(e.target.value)}
-                    autoFocus
-                    className="flex-1 bg-[#0E0B09] border border-[#3A2E26] rounded-lg px-3 py-1.5 text-xs text-[#F3E9DC] placeholder-[#5A4A3E] focus:outline-none focus:border-[#FF9F1C]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 bg-[#E4572E] text-[#0E0B09] font-bold text-xs rounded-lg hover:brightness-110 cursor-pointer border-none"
-                  >
-                    Load &amp; Sync
-                  </button>
-                </form>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[#A89B8C]">
-                  <span>1-Click Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=aqz-KE-bpKQ')}
-                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
-                  >
-                    🍿 Big Buck Bunny
-                  </button>
-                  <span>•</span>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=jfKfPfyJRdk')}
-                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
-                  >
-                    🎶 Lofi 24/7
-                  </button>
-                  <span>•</span>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyQuickYouTube('https://www.youtube.com/watch?v=xRPjKOm286g')}
-                    className="text-[#FF9F1C] hover:underline bg-transparent border-none cursor-pointer p-0"
-                  >
-                    🚀 NASA Earth 4K
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* THE SCREEN */}
           <div
@@ -1339,6 +1233,127 @@ export function TheatreAuditorium({
                     ⛶
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* NOW SCREENING & QUICK SUITE SELECTOR */}
+          <div className="w-full max-w-[960px] mx-auto mt-4 space-y-4">
+            {/* Feature Metadata & Platform Switchers */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2EC4B6] animate-pulse flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-[#261E19] text-[#FF9F1C] border border-[#3A2E26]">
+                      {provider === 'youtube' ? 'YouTube Sync' : provider === 'screenshare' ? 'Live Tab Stream' : 'Cinema Stream'}
+                    </span>
+                    <span className="font-display font-semibold text-sm text-[#F3E9DC] truncate">
+                      {videoTitle || 'Cinema Presentation'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSourcePickerTab('netflix');
+                    setShowSourcePicker(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#E50914]/15 hover:bg-[#E50914]/25 border border-[#E50914]/40 text-xs font-mono text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#E50914]" />
+                  <span>Netflix</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSourcePickerTab('hotstar');
+                    setShowSourcePicker(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#0063E5]/15 hover:bg-[#0063E5]/25 border border-[#0063E5]/40 text-xs font-mono text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#0063E5]" />
+                  <span>JioHotstar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSourcePickerTab('youtube');
+                    setShowSourcePicker(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#FF9F1C]/15 hover:bg-[#FF9F1C]/25 border border-[#FF9F1C]/40 text-xs font-mono text-[#FF9F1C] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span>▶ Full Movies</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSourcePicker(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] text-xs font-mono text-[#A89B8C] hover:text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span>＋ Sources</span>
+                </button>
+              </div>
+            </div>
+
+            {/* QUICK FEATURE SHELF (Instant 1-Click Sync For Room) */}
+            <div className="bg-[#140F0C] border border-[#2A211B] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-mono text-[#A89B8C] uppercase tracking-wider">
+                  Popular Features (1-Click Switch Room Stream)
+                </span>
+                <span className="text-[11px] font-mono text-[#5A4A3E]">
+                  Syncs immediately across all devices
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {[
+                  ...YOUTUBE_FULL_MOVIES.slice(0, 3),
+                  ...NETFLIX_CATALOGUE.slice(0, 2),
+                  ...HOTSTAR_CATALOGUE.slice(0, 1),
+                ].map((m) => (
+                  <div
+                    key={m.id}
+                    onClick={() => {
+                      if (m.youtubeId) {
+                        handleApplyQuickYouTube(`https://www.youtube.com/watch?v=${m.youtubeId}`);
+                      } else {
+                        handleSelectSource({
+                          videoId: m.id,
+                          provider: (m.provider as any) || 'html5',
+                          sourceRef: m.videoUrl || m.playableUrl,
+                          title: m.title,
+                        });
+                      }
+                    }}
+                    className="group bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#FF9F1C] rounded-lg overflow-hidden cursor-pointer transition-all flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-[3/4] bg-black overflow-hidden">
+                      <img
+                        src={m.posterUrl}
+                        alt={m.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80 group-hover:opacity-100"
+                      />
+                      <span className="absolute top-1.5 left-1.5 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase bg-black/80 text-[#FF9F1C]">
+                        {m.platform || (m.provider === 'youtube' ? 'Full Movie' : 'Cinema')}
+                      </span>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-xs font-bold text-[#FF9F1C]">▶ Play</span>
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="font-display font-medium text-xs text-[#F3E9DC] truncate group-hover:text-[#FF9F1C] transition-colors">
+                        {m.title}
+                      </div>
+                      <div className="text-[10px] font-mono text-[#A89B8C] mt-0.5">
+                        {m.runtime}m • {m.year}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
