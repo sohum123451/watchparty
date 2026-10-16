@@ -1,16 +1,23 @@
 'use client';
 
 /**
- * SourcePickerSheet Component — Phase 4
- * Provides a modal/sheet to select media sources:
- * 1. Free library (public domain / open films)
- * 2. Paste a link (YouTube, direct MP4/HLS, podcast RSS, arbitrary site with SSRF protection)
- * 3. Local file (member chooses own copy, matched by fingerprint)
- * 4. Streaming platforms (Netflix, JioHotstar, Prime Video, Disney+, etc.)
+ * SourcePickerSheet Component — Cinematheque Streaming & OTT Hub
+ * 1. Netflix Party Hub (Stranger Things, Squid Game, Money Heist, Wednesday, Extraction 2)
+ * 2. JioHotstar Hub (Special OPS, The Night Manager, Loki, Avengers: Endgame, Brahmāstra)
+ * 3. YouTube Full Movies & Live Search (Kung Fury, Night of the Living Dead, Charade, The General)
+ * 4. Free Cinema Master Prints (Sintel, Tears of Steel, Big Buck Bunny)
+ * 5. Paste Link (YouTube, Vimeo, MP4, HLS, Podcasts)
+ * 6. Local File Sync
  */
 
 import React, { useState, useEffect } from 'react';
-import { MOVIE_CATALOGUE } from '@watchparty/shared';
+import {
+  MOVIE_CATALOGUE,
+  NETFLIX_CATALOGUE,
+  HOTSTAR_CATALOGUE,
+  YOUTUBE_FULL_MOVIES,
+  Movie,
+} from '@watchparty/shared';
 
 export interface SourceSelection {
   videoId: string;
@@ -26,9 +33,10 @@ export interface SourcePickerSheetProps {
   onAddToQueue?: (source: SourceSelection) => void;
   onStartScreenShare?: () => void;
   roomCode: string;
+  initialTab?: TabType;
 }
 
-type TabType = 'library' | 'link' | 'local' | 'platforms';
+export type TabType = 'netflix' | 'hotstar' | 'youtube' | 'library' | 'link' | 'local';
 
 export function SourcePickerSheet({
   isOpen,
@@ -37,8 +45,15 @@ export function SourcePickerSheet({
   onAddToQueue,
   onStartScreenShare,
   roomCode,
+  initialTab = 'netflix',
 }: SourcePickerSheetProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('library');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Paste link state
   const [urlInput, setUrlInput] = useState('');
@@ -46,13 +61,13 @@ export function SourcePickerSheet({
   const [resolvedSource, setResolvedSource] = useState<any>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
 
+  // YouTube search query state
+  const [ytSearchQuery, setYtSearchQuery] = useState('');
+
   // Local file state
   const [localFileName, setLocalFileName] = useState<string | null>(null);
   const [localFileFingerprint, setLocalFileFingerprint] = useState<string | null>(null);
   const [localFileObjectUrl, setLocalFileObjectUrl] = useState<string | null>(null);
-
-  // Extension detection state
-  const [hasExtension, setHasExtension] = useState(false);
 
   // Dynamic Free Library from Server API
   const [libraryFilms, setLibraryFilms] = useState<any[]>(() =>
@@ -68,11 +83,11 @@ export function SourcePickerSheet({
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((data) => {
         if (!cancelled && data?.films && data.films.length > 0) {
-          setLibraryFilms(data.films);
+          setLibraryFilms(data.films.filter((m: any) => m.isFree === true));
         }
       })
       .catch(() => {
-        // Keeps fallback to shared MOVIE_CATALOGUE free films
+        // Keeps fallback
       })
       .finally(() => {
         if (!cancelled) setLibraryLoading(false);
@@ -81,13 +96,6 @@ export function SourcePickerSheet({
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const extDetected = Boolean((window as any).__WATCHPARTY_EXTENSION__);
-      setHasExtension(extDetected);
-    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -101,34 +109,24 @@ export function SourcePickerSheet({
     setResolveError(null);
     setResolvedSource(null);
 
-    // Instant client-side resolution for YouTube
-    const ytMatch = cleanUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    // Direct YouTube Detection
+    const ytMatch = cleanUrl.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/
+    );
     if (ytMatch) {
-      const id = ytMatch[1];
+      const vid = ytMatch[1];
       setResolvedSource({
-        videoId: id,
+        videoId: vid,
         provider: 'youtube',
-        sourceRef: `https://www.youtube.com/watch?v=${id}`,
-        title: `YouTube Video (${id})`,
-        thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+        sourceRef: `https://www.youtube.com/watch?v=${vid}`,
+        title: `YouTube (${vid})`,
+        thumbnail: `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
       });
-      // Optionally fetch real video title via /api/resolve
-      fetch('/api/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanUrl }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.descriptor) setResolvedSource(data.descriptor);
-        })
-        .catch(() => {});
-
       setResolving(false);
       return;
     }
 
-    // Direct video stream / MP4 / WebM / HLS
+    // Direct MP4 / WebM / HLS
     const isDirectVideo = cleanUrl.match(/\.(mp4|webm|m3u8|mov|ogg)($|\?)/i);
     if (isDirectVideo) {
       const fileName = cleanUrl.split('/').pop()?.split('?')[0] || 'Web Video Stream';
@@ -180,7 +178,22 @@ export function SourcePickerSheet({
       onAddToQueue(source);
     } else {
       onSelectSource(source);
+      onClose();
     }
+  };
+
+  const handleSelectMovie = (movie: Movie) => {
+    const provider = movie.provider === 'youtube' || movie.youtubeId ? 'youtube' : 'html5';
+    const sourceRef = movie.youtubeId
+      ? `https://www.youtube.com/watch?v=${movie.youtubeId}`
+      : movie.videoUrl || movie.playableUrl;
+
+    onSelectSource({
+      videoId: movie.youtubeId || movie.id,
+      provider,
+      sourceRef,
+      title: movie.title,
+    });
     onClose();
   };
 
@@ -206,20 +219,45 @@ export function SourcePickerSheet({
     onClose();
   };
 
-  const handleOpenPlatform = (name: string, url: string) => {
+  const handleOpenPlatformUrl = (url?: string) => {
+    if (!url) return;
     const roomParam = encodeURIComponent(roomCode);
     const targetUrl = url.includes('?') ? `${url}&watchparty=${roomParam}` : `${url}#watchparty=${roomParam}`;
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
+  const handleSearchYouTube = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = ytSearchQuery.trim();
+    if (!q) return;
+
+    const ytMatch = q.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    if (ytMatch) {
+      const vid = ytMatch[1];
+      onSelectSource({
+        videoId: vid,
+        provider: 'youtube',
+        sourceRef: `https://www.youtube.com/watch?v=${vid}`,
+        title: `YouTube (${vid})`,
+      });
+      onClose();
+      return;
+    }
+
+    // Direct user to YouTube search results to easily pick any video
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-[#1A1512] border-2 border-[#3A2E26] rounded-xl shadow-[0_25px_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl bg-[#1A1512] border-2 border-[#3A2E26] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#3A2E26] bg-[#0E0B09]">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF9F1C]" />
-            <h2 className="font-display font-semibold text-xl text-[#F3E9DC]">Add source</h2>
+          <div className="flex items-center gap-2.5">
+            <span className="w-3 h-3 rounded-full bg-[#FF9F1C]" />
+            <h2 className="font-display font-semibold text-xl sm:text-2xl text-[#F3E9DC]">
+              Select What to Watch
+            </h2>
           </div>
           <button
             type="button"
@@ -231,18 +269,20 @@ export function SourcePickerSheet({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex border-b border-[#3A2E26] bg-[#140F0C] px-6 pt-3 gap-6 overflow-x-auto">
+        <div className="flex border-b border-[#3A2E26] bg-[#140F0C] px-6 pt-3 gap-3 sm:gap-6 overflow-x-auto select-none">
           {[
-            { id: 'library', label: 'Free library' },
-            { id: 'link', label: 'Paste a link' },
-            { id: 'local', label: 'Local file' },
-            { id: 'platforms', label: 'Platforms' },
+            { id: 'netflix', label: '🔴 Netflix Party' },
+            { id: 'hotstar', label: '🔵 JioHotstar' },
+            { id: 'youtube', label: '▶ YouTube Full Movies' },
+            { id: 'library', label: '🎬 Open Cinema' },
+            { id: 'link', label: '🔗 Paste a Link' },
+            { id: 'local', label: '📁 Local Video & Subs' },
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent whitespace-nowrap ${
+              className={`pb-3 text-xs sm:text-sm font-medium border-b-2 transition-colors cursor-pointer bg-transparent whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === tab.id
                   ? 'border-[#FF9F1C] text-[#FF9F1C] font-bold'
                   : 'border-transparent text-[#A89B8C] hover:text-[#F3E9DC]'
@@ -254,8 +294,273 @@ export function SourcePickerSheet({
         </div>
 
         {/* Content Area */}
-        <div className="p-6 overflow-y-auto flex-1 font-ui space-y-4">
-          {/* TAB 1: Free Library */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 font-ui space-y-4">
+          {/* TAB: NETFLIX */}
+          {activeTab === 'netflix' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-[#E50914]/10 border border-[#E50914]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-[#E50914] text-sm block mb-1">
+                    🔴 Netflix Co-Watching Lounge
+                  </span>
+                  <span className="text-[#A89B8C] leading-relaxed block">
+                    Choose a Netflix hit below. You can either stream your Netflix browser tab directly into the auditorium with audio, or play the official full feature preview in sync!
+                  </span>
+                </div>
+                {onStartScreenShare && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onStartScreenShare();
+                      onClose();
+                    }}
+                    className="px-4 py-2 bg-[#E50914] hover:brightness-110 active:scale-95 text-[#F3E9DC] font-bold text-xs rounded-full whitespace-nowrap transition-all border-none cursor-pointer flex-shrink-0"
+                  >
+                    📺 Stream Netflix Tab
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {NETFLIX_CATALOGUE.map((movie) => (
+                  <div
+                    key={movie.id}
+                    className="bg-[#261E19] border border-[#3A2E26] hover:border-[#E50914] rounded-xl overflow-hidden flex flex-col justify-between transition-all group"
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#E50914] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                        Netflix
+                      </span>
+                      <span className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-[#FF9F1C] text-[10px] font-mono px-2 py-0.5 rounded">
+                        ★ {movie.rating}
+                      </span>
+                    </div>
+
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-display font-semibold text-lg text-[#F3E9DC] leading-snug">
+                          {movie.title}
+                        </h3>
+                        <p className="text-xs text-[#A89B8C] mt-1.5 line-clamp-2">
+                          {movie.description}
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-[11px] font-mono text-[#5A4A3E]">
+                          <span>{movie.year}</span>
+                          <span>•</span>
+                          <span>{movie.runtime}m</span>
+                          <span>•</span>
+                          <span className="text-[#A89B8C]">{movie.genres?.join(', ')}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-[#3A2E26] flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectMovie(movie)}
+                          className="w-full py-2 bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-xs rounded-lg transition-all border-none cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>▶</span>
+                          <span>Watch Preview in Room</span>
+                        </button>
+                        <div className="flex gap-2">
+                          {onStartScreenShare && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onStartScreenShare();
+                                onClose();
+                              }}
+                              className="flex-1 py-1.5 bg-[#2EC4B6]/15 hover:bg-[#2EC4B6]/25 border border-[#2EC4B6]/40 text-[#2EC4B6] font-medium text-xs rounded-lg transition-all cursor-pointer"
+                              title="Stream your active Netflix browser tab with audio"
+                            >
+                              📺 Stream Tab
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPlatformUrl(movie.platformUrl)}
+                            className="flex-1 py-1.5 bg-[#1A1512] hover:bg-[#342821] border border-[#3A2E26] text-[#A89B8C] hover:text-[#F3E9DC] text-xs rounded-lg transition-all cursor-pointer"
+                          >
+                            ↗ Netflix
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: JIOHOTSTAR */}
+          {activeTab === 'hotstar' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-[#0063E5]/10 border border-[#0063E5]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-[#0063E5] text-sm block mb-1">
+                    🔵 JioHotstar &amp; Disney+ Hub
+                  </span>
+                  <span className="text-[#A89B8C] leading-relaxed block">
+                    Watch the best of Indian originals, Disney+ blockbusters, and Marvel in perfect sync with your friends!
+                  </span>
+                </div>
+                {onStartScreenShare && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onStartScreenShare();
+                      onClose();
+                    }}
+                    className="px-4 py-2 bg-[#0063E5] hover:brightness-110 active:scale-95 text-[#F3E9DC] font-bold text-xs rounded-full whitespace-nowrap transition-all border-none cursor-pointer flex-shrink-0"
+                  >
+                    📺 Stream Hotstar Tab
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {HOTSTAR_CATALOGUE.map((movie) => (
+                  <div
+                    key={movie.id}
+                    className="bg-[#261E19] border border-[#3A2E26] hover:border-[#0063E5] rounded-xl overflow-hidden flex flex-col justify-between transition-all group"
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden">
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                      />
+                      <span className="absolute top-2 left-2 bg-[#0063E5] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                        Hotstar
+                      </span>
+                      <span className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-[#FF9F1C] text-[10px] font-mono px-2 py-0.5 rounded">
+                        ★ {movie.rating}
+                      </span>
+                    </div>
+
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h3 className="font-display font-semibold text-lg text-[#F3E9DC] leading-snug">
+                          {movie.title}
+                        </h3>
+                        <p className="text-xs text-[#A89B8C] mt-1.5 line-clamp-2">
+                          {movie.description}
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-[11px] font-mono text-[#5A4A3E]">
+                          <span>{movie.year}</span>
+                          <span>•</span>
+                          <span>{movie.runtime}m</span>
+                          <span>•</span>
+                          <span className="text-[#A89B8C]">{movie.genres?.join(', ')}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-[#3A2E26] flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectMovie(movie)}
+                          className="w-full py-2 bg-[#FF9F1C] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-xs rounded-lg transition-all border-none cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>▶</span>
+                          <span>Watch Preview in Room</span>
+                        </button>
+                        <div className="flex gap-2">
+                          {onStartScreenShare && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onStartScreenShare();
+                                onClose();
+                              }}
+                              className="flex-1 py-1.5 bg-[#2EC4B6]/15 hover:bg-[#2EC4B6]/25 border border-[#2EC4B6]/40 text-[#2EC4B6] font-medium text-xs rounded-lg transition-all cursor-pointer"
+                              title="Stream your active Hotstar tab with audio"
+                            >
+                              📺 Stream Tab
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPlatformUrl(movie.platformUrl)}
+                            className="flex-1 py-1.5 bg-[#1A1512] hover:bg-[#342821] border border-[#3A2E26] text-[#A89B8C] hover:text-[#F3E9DC] text-xs rounded-lg transition-all cursor-pointer"
+                          >
+                            ↗ Hotstar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: YOUTUBE FULL MOVIES & SEARCH */}
+          {activeTab === 'youtube' && (
+            <div className="space-y-4">
+              <form onSubmit={handleSearchYouTube} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Search ANY YouTube movie, trailer, video, or paste link…"
+                  value={ytSearchQuery}
+                  onChange={(e) => setYtSearchQuery(e.target.value)}
+                  className="flex-1 bg-[#261E19] border border-[#3A2E26] rounded-xl px-4 py-3 text-sm text-[#F3E9DC] placeholder-[#5A4A3E] focus:outline-none focus:border-[#FF9F1C]"
+                />
+                <button
+                  type="submit"
+                  className="bg-[#E4572E] hover:brightness-105 active:scale-95 text-[#0E0B09] font-bold text-sm px-5 py-3 rounded-xl transition-all border-none cursor-pointer"
+                >
+                  Search / Play
+                </button>
+              </form>
+
+              <div className="pt-2">
+                <h3 className="font-mono text-xs uppercase tracking-wider text-[#FF9F1C] mb-3">
+                  Featured Full-Length Movies (100% Free on YouTube)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {YOUTUBE_FULL_MOVIES.map((movie) => (
+                    <div
+                      key={movie.id}
+                      onClick={() => handleSelectMovie(movie)}
+                      className="bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#E4572E] rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col justify-between group"
+                    >
+                      <div className="relative aspect-video bg-black overflow-hidden">
+                        <img
+                          src={movie.posterUrl}
+                          alt={movie.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                        />
+                        <span className="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-[#F3E9DC] px-2 py-0.5 rounded">
+                          {movie.runtime}m
+                        </span>
+                        <span className="absolute top-2 left-2 bg-[#E4572E] text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                          Full Movie
+                        </span>
+                      </div>
+                      <div className="p-3">
+                        <h4 className="font-display font-medium text-sm text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors line-clamp-1">
+                          {movie.title}
+                        </h4>
+                        <p className="text-[11px] text-[#A89B8C] line-clamp-2 mt-1">
+                          {movie.description}
+                        </p>
+                        <div className="mt-3 py-1.5 bg-[#FF9F1C] text-[#0E0B09] font-bold text-xs rounded text-center">
+                          Play Full Movie
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: FREE CINEMA LIBRARY */}
           {activeTab === 'library' && (
             <div className="space-y-3">
               {libraryLoading && libraryFilms.length === 0 ? (
@@ -267,15 +572,7 @@ export function SourcePickerSheet({
                   {libraryFilms.map((movie) => (
                     <div
                       key={movie.id}
-                      onClick={() => {
-                        onSelectSource({
-                          videoId: movie.id,
-                          provider: movie.provider || 'html5',
-                          sourceRef: movie.videoUrl,
-                          title: movie.title,
-                        });
-                        onClose();
-                      }}
+                      onClick={() => handleSelectMovie(movie)}
                       className="bg-[#261E19] hover:bg-[#2F251F] border border-[#3A2E26] hover:border-[#FF9F1C] p-4 rounded-xl flex flex-col justify-between cursor-pointer transition-all group"
                     >
                       <div>
@@ -305,7 +602,7 @@ export function SourcePickerSheet({
             </div>
           )}
 
-          {/* TAB 2: Paste a Link */}
+          {/* TAB: PASTE A LINK */}
           {activeTab === 'link' && (
             <div className="space-y-4">
               <form onSubmit={handleResolveUrl} className="flex gap-2">
@@ -355,7 +652,7 @@ export function SourcePickerSheet({
                   </div>
 
                   <p className="text-[11px] font-mono text-[#A89B8C] border-t border-[#3A2E26] pt-2">
-                    Attribution: Content streams directly from the origin host. WatchParty does not rehost or alter third-party media.
+                    Attribution: Content streams directly from origin. WatchParty does not rehost third-party media.
                   </p>
 
                   <div className="flex gap-3 pt-2">
@@ -381,7 +678,7 @@ export function SourcePickerSheet({
             </div>
           )}
 
-          {/* TAB 3: Local File */}
+          {/* TAB: LOCAL FILE */}
           {activeTab === 'local' && (
             <div className="space-y-4">
               <div className="border-2 border-dashed border-[#3A2E26] rounded-xl p-8 text-center hover:border-[#FF9F1C] transition-colors bg-[#261E19]/40">
@@ -423,79 +720,6 @@ export function SourcePickerSheet({
                   </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* TAB 4: Streaming Platforms */}
-          {activeTab === 'platforms' && (
-            <div className="space-y-4">
-              {/* PRIMARY ZERO-EXTENSION STREAMING OPTION */}
-              <div className="p-4 bg-[#2EC4B6]/10 border border-[#2EC4B6]/40 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                <div>
-                  <span className="font-bold text-[#2EC4B6] text-sm block mb-1">
-                    📺 Stream Tab with Audio (No Extension Needed)
-                  </span>
-                  <span className="text-[#A89B8C] leading-relaxed block">
-                    Open Netflix, JioHotstar, Prime Video, or any streaming tab in your browser, check &quot;Share tab audio&quot;, and stream it directly to everyone in your cinema room!
-                  </span>
-                </div>
-                {onStartScreenShare && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onStartScreenShare();
-                      onClose();
-                    }}
-                    className="px-4 py-2.5 bg-[#2EC4B6] hover:brightness-110 active:scale-95 text-[#0E0B09] font-bold text-xs rounded-full whitespace-nowrap transition-all border-none cursor-pointer flex-shrink-0"
-                  >
-                    Start Tab Stream
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { name: 'Netflix', url: 'https://www.netflix.com', color: '#E50914' },
-                  { name: 'JioHotstar', url: 'https://www.hotstar.com', color: '#0F1014' },
-                  { name: 'Prime Video', url: 'https://www.primevideo.com', color: '#00A8E1' },
-                  { name: 'Disney+', url: 'https://www.disneyplus.com', color: '#113CCF' },
-                  { name: 'YouTube', url: 'https://www.youtube.com', color: '#FF0000', isYouTube: true },
-                  { name: 'Max', url: 'https://www.max.com', color: '#002BE7' },
-                ].map((plat) => (
-                  <button
-                    key={plat.name}
-                    type="button"
-                    onClick={() => {
-                      if (plat.isYouTube) {
-                        setActiveTab('link');
-                        setUrlInput('https://www.youtube.com/watch?v=');
-                      } else {
-                        handleOpenPlatform(plat.name, plat.url);
-                      }
-                    }}
-                    className="p-4 bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between min-h-[90px]"
-                  >
-                    <span className="text-[11px] font-mono text-[#A89B8C] uppercase tracking-wider">
-                      {plat.isYouTube ? 'Direct Embed (No Ext)' : 'Open Service'}
-                    </span>
-                    <span className="font-display font-semibold text-lg text-[#F3E9DC]">{plat.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Secondary Extension Info */}
-              <div className="p-3 bg-[#1A1512] border border-[#3A2E26] rounded-xl text-[11px] text-[#A89B8C] flex items-center justify-between gap-3">
-                <span>
-                  Tip: For individual DRM synchronization where every friend logs in to their own account, you can also use the browser extension.
-                </span>
-                <a
-                  href="/extension"
-                  target="_blank"
-                  className="text-[#FF9F1C] font-semibold hover:underline whitespace-nowrap"
-                >
-                  View Extension →
-                </a>
-              </div>
             </div>
           )}
         </div>

@@ -93,23 +93,22 @@ export function TheatreAuditorium({
   const screenContainerRef = useRef<HTMLDivElement>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const sendRef = useRef<(msg: any) => void>(() => {});
-  const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('html5');
-  const [youtubeId, setYoutubeId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('youtube');
+  const [youtubeId, setYoutubeId] = useState<string | null>('b9EkMc79ZSU');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
-  const [videoSrc, setVideoSrc] = useState(
-    MOVIE_CATALOGUE[0]?.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-  );
-  const [videoTitle, setVideoTitle] = useState(MOVIE_CATALOGUE[0]?.title || 'Big Buck Bunny');
+  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=b9EkMc79ZSU');
+  const [videoTitle, setVideoTitle] = useState('Stranger Things');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [driftMs, setDriftMs] = useState(0);
   const [showSyncDiagnostics, setShowSyncDiagnostics] = useState(false);
+  const [sourcePickerTab, setSourcePickerTab] = useState<'netflix' | 'hotstar' | 'youtube' | 'library' | 'link' | 'local'>('netflix');
   const [quickYouTubeOpen, setQuickYouTubeOpen] = useState(false);
   const [quickYouTubeUrl, setQuickYouTubeUrl] = useState('');
 
@@ -1021,11 +1020,46 @@ export function TheatreAuditorium({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setQuickYouTubeOpen(!quickYouTubeOpen)}
+                  onClick={() => {
+                    setSourcePickerTab('netflix');
+                    setShowSourcePicker(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#E50914]/20 hover:bg-[#E50914]/30 border border-[#E50914]/50 text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#E50914]" />
+                  <span className="font-bold text-[#E50914]">Netflix</span>
+                  <span>(Stranger Things &amp; More)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSourcePickerTab('hotstar');
+                    setShowSourcePicker(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#0063E5]/20 hover:bg-[#0063E5]/30 border border-[#0063E5]/50 text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#0063E5]" />
+                  <span className="font-bold text-[#0063E5]">JioHotstar</span>
+                  <span>(Special OPS &amp; Marvel)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSourcePickerTab('youtube');
+                    setShowSourcePicker(true);
+                  }}
                   className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#E4572E] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <span className="text-[#E4572E]">▶</span>
-                  <span>YouTube Direct</span>
+                  <span>Full Movies</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickYouTubeOpen(!quickYouTubeOpen)}
+                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span>🔍</span>
+                  <span>Search YouTube</span>
                 </button>
                 <button
                   type="button"
@@ -1035,17 +1069,17 @@ export function TheatreAuditorium({
                       ? 'bg-[#E4572E] text-[#0E0B09] border-[#E4572E] font-bold animate-pulse'
                       : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] hover:border-[#2EC4B6] text-[#2EC4B6]'
                   }`}
-                  title="Stream your Netflix, Hotstar, Prime Video or browser tab with audio"
+                  title="Stream your active Netflix, Hotstar, Prime Video or browser tab with audio"
                 >
                   <span>📺</span>
-                  <span>{isScreenSharing ? 'Stop Stream' : 'Stream Netflix / Hotstar Tab'}</span>
+                  <span>{isScreenSharing ? 'Stop Stream' : 'Stream Tab with Audio'}</span>
                 </button>
                 <label
                   className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors select-none"
                   title="Load local .srt or .vtt subtitle file (Howard Chung engine)"
                 >
                   <span className="text-[#FF9F1C]">💬</span>
-                  <span>{subtitleUrl ? 'Subtitles Active' : 'Load Subtitles (.srt/.vtt)'}</span>
+                  <span>{subtitleUrl ? 'Subtitles Active' : 'CC Subtitles'}</span>
                   <input
                     type="file"
                     accept=".srt,.vtt"
@@ -1053,13 +1087,6 @@ export function TheatreAuditorium({
                     className="hidden"
                   />
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowSourcePicker(true)}
-                  className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] hover:border-[#FF9F1C] text-xs font-ui text-[#A89B8C] hover:text-[#F3E9DC] flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <span>＋ Catalogue</span>
-                </button>
               </div>
             </div>
 
@@ -1382,6 +1409,7 @@ export function TheatreAuditorium({
         onAddToQueue={handleAddToQueueFromPicker}
         onStartScreenShare={handleStartScreenShare}
         roomCode={roomCode}
+        initialTab={sourcePickerTab}
       />
     </div>
   );

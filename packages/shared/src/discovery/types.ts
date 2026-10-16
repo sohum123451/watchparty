@@ -21,6 +21,9 @@ export interface Movie {
   provider?: string; // "html5" | "youtube"
   accentColor?: string;
   textColor?: string;
+  platform?: 'netflix' | 'hotstar' | 'youtube' | 'prime' | 'free';
+  platformUrl?: string;
+  youtubeId?: string;
 }
 
 export type MovieCategory =

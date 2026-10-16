@@ -275,6 +275,58 @@ export default function LandingPage() {
         </div>
       </main>
 
+      {/* FEATURED STREAMING MARQUEE */}
+      <section className="px-6 sm:px-12 md:px-16 pt-8 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E50914]" />
+            <h2 className="font-display font-semibold text-xl sm:text-2xl text-[#F3E9DC]">
+              Trending on Netflix &amp; JioHotstar Tonight
+            </h2>
+          </div>
+          <span className="text-xs font-mono text-[#A89B8C] hidden sm:inline">Click any title to enter co-watch suite</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { title: 'Stranger Things', platform: 'Netflix', tagBg: '#E50914', year: 2022, img: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&auto=format&fit=crop' },
+            { title: 'Squid Game', platform: 'Netflix', tagBg: '#E50914', year: 2021, img: 'https://images.unsplash.com/photo-1634157703702-3c124b455499?w=500&auto=format&fit=crop' },
+            { title: 'Money Heist', platform: 'Netflix', tagBg: '#E50914', year: 2021, img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop' },
+            { title: 'Special OPS', platform: 'Hotstar', tagBg: '#0063E5', year: 2020, img: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=500&auto=format&fit=crop' },
+            { title: 'The Night Manager', platform: 'Hotstar', tagBg: '#0063E5', year: 2023, img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=500&auto=format&fit=crop' },
+            { title: 'Kung Fury (Full)', platform: 'YouTube', tagBg: '#E4572E', year: 2015, img: 'https://images.unsplash.com/photo-1509281373149-e957c6296406?w=500&auto=format&fit=crop' },
+          ].map((item) => (
+            <div
+              key={item.title}
+              onClick={handleCreateRoom}
+              className="bg-[#1A1512] hover:bg-[#261E19] border border-[#3A2E26] hover:border-[#FF9F1C] rounded-xl overflow-hidden cursor-pointer transition-all group flex flex-col justify-between"
+            >
+              <div className="relative aspect-[3/4] bg-black overflow-hidden">
+                <img
+                  src={item.img}
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
+                />
+                <span
+                  style={{ backgroundColor: item.tagBg }}
+                  className="absolute top-2 left-2 text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded uppercase"
+                >
+                  {item.platform}
+                </span>
+              </div>
+              <div className="p-3">
+                <h3 className="font-display font-medium text-sm text-[#F3E9DC] group-hover:text-[#FF9F1C] transition-colors truncate">
+                  {item.title}
+                </h3>
+                <div className="flex items-center justify-between text-[11px] font-mono text-[#A89B8C] mt-1">
+                  <span>{item.year}</span>
+                  <span className="text-[#FF9F1C] group-hover:underline">Co-watch →</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* 3 STEPS STRIP */}
       <div className="relative flex flex-col sm:flex-row gap-8 sm:gap-12 px-6 sm:px-12 md:px-16 pt-8 sm:pt-12 mt-28 sm:mt-0">
