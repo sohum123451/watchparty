@@ -331,6 +331,9 @@ export function SourcePickerSheet({
                       <img
                         src={movie.posterUrl}
                         alt={movie.title}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=600&auto=format&fit=crop';
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
                       />
                       <span className="absolute top-2 left-2 bg-[#E50914] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
@@ -433,6 +436,9 @@ export function SourcePickerSheet({
                       <img
                         src={movie.posterUrl}
                         alt={movie.title}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&auto=format&fit=crop';
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
                       />
                       <span className="absolute top-2 left-2 bg-[#0063E5] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
@@ -533,6 +539,14 @@ export function SourcePickerSheet({
                         <img
                           src={movie.posterUrl}
                           alt={movie.title}
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            if (movie.youtubeId) {
+                              img.src = `https://img.youtube.com/vi/${movie.youtubeId}/hqdefault.jpg`;
+                            } else {
+                              img.src = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&auto=format&fit=crop';
+                            }
+                          }}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80"
                         />
                         <span className="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-[#F3E9DC] px-2 py-0.5 rounded">

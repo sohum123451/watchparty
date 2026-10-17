@@ -195,13 +195,21 @@ export function TheatreAuditorium({
   const nextSeq = () => ++seqRef.current;
 
   // YouTube postMessage command dispatcher
-  const sendYouTubeCommand = useCallback((func: string, args: any[] = []) => {
+  const sendYouTubeCommand = useCallback((func: string, args: any = '') => {
     const iframe = document.getElementById('yt-player-frame') as HTMLIFrameElement | null;
     if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func, args }),
-        '*'
-      );
+      try {
+        iframe.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func, args }),
+          '*'
+        );
+        if (args === '' || (Array.isArray(args) && args.length === 0)) {
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func, args: args === '' ? [] : '' }),
+            '*'
+          );
+        }
+      } catch {}
     }
   }, []);
 
@@ -1176,7 +1184,7 @@ export function TheatreAuditorium({
           <div
             ref={screenContainerRef}
             data-playing={isPlaying ? 'true' : 'false'}
-            className="relative w-full aspect-video max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto shadow-[0_0_50px_rgba(0,0,0,0.8),0_0_80px_rgba(255,159,28,0.08)]"
+            className="relative w-full aspect-video max-w-[888px] max-h-[500px] bg-black border border-[#2A211B] rounded-[14px] flex flex-col items-center justify-center overflow-hidden group flex-shrink-0 mx-auto shadow-[0_0_50px_rgba(0,0,0,0.8),0_0_80px_rgba(255,159,28,0.08)]"
           >
             {/* Ambient source badge */}
             <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-[#0E0B09]/85 backdrop-blur-md border border-[#3A2E26] text-[#F3E9DC] font-mono text-[11px] px-3 py-1 rounded-full pointer-events-none">
@@ -1467,6 +1475,14 @@ export function TheatreAuditorium({
                       <img
                         src={m.posterUrl}
                         alt={m.title}
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          if (m.youtubeId) {
+                            img.src = `https://img.youtube.com/vi/${m.youtubeId}/hqdefault.jpg`;
+                          } else {
+                            img.src = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&auto=format&fit=crop';
+                          }
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80 group-hover:opacity-100"
                       />
                       <span className="absolute top-1.5 left-1.5 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase bg-black/80 text-[#FF9F1C]">
