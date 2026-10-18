@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "node scripts/patch-next.js",
     "build": "npm --workspace=@watchparty/shared run build && npm --workspace=@watchparty/server run build && npm --workspace=@watchparty/client run build && npm --workspace=@watchparty/extension run build && npm --workspace=@watchparty/web run build",
     "test": "npm --workspace=@watchparty/shared test && npm --workspace=@watchparty/server test && npm --workspace=@watchparty/client test && npm --workspace=@watchparty/extension test && npm --workspace=@watchparty/web test",
     "build:shared": "npm --workspace=@watchparty/shared run build",

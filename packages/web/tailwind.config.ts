@@ -3,7 +3,9 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   darkMode: 'class',
   content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{html,ts,tsx,js,jsx}',
+    '../client/src/**/*.{html,ts,tsx,js,jsx}',
+    '../shared/src/**/*.{html,ts,tsx,js,jsx}',
   ],
   theme: {
     extend: {
@@ -19,8 +21,14 @@ const config: Config = {
           muted: '#A89B8C',
           dark: '#675C51',
         },
+        muted: {
+          DEFAULT: '#A89B8C',
+          dark: '#675C51',
+        },
         accent: {
           DEFAULT: '#FF9F1C',
+          hover: '#FFAE38',
+          active: '#E6880C',
           glow: 'rgba(255, 159, 28, 0.22)',
         },
         'accent-2': {
@@ -36,17 +44,23 @@ const config: Config = {
           glow: 'rgba(214, 40, 57, 0.32)',
         },
         border: {
+          DEFAULT: 'rgba(243, 233, 220, 0.16)',
           subtle: 'rgba(243, 233, 220, 0.08)',
           brass: 'rgba(243, 233, 220, 0.16)',
           'brass-bright': 'rgba(255, 159, 28, 0.45)',
           marquee: 'rgba(228, 87, 46, 0.4)',
         },
+        brass: {
+          DEFAULT: 'rgba(243, 233, 220, 0.16)',
+          subtle: 'rgba(243, 233, 220, 0.08)',
+          bright: 'rgba(255, 159, 28, 0.45)',
+        },
       },
       fontFamily: {
-        display: ['var(--font-fraunces)', 'var(--font-bricolage)', 'Georgia', 'serif'],
-        ui: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
-        sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-jetbrains-mono)', 'monospace'],
+        display: ['Fraunces', 'Bricolage Grotesque', 'Georgia', 'serif'],
+        ui: ['DM Sans', 'Instrument Sans', 'system-ui', 'sans-serif'],
+        sans: ['DM Sans', 'Instrument Sans', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       letterSpacing: {
         'tight-display': '-0.035em',
@@ -70,7 +84,6 @@ const config: Config = {
         'projector-beam': '0 0 35px -8px rgba(255, 159, 28, 0.28), 0 0 70px -15px rgba(255, 159, 28, 0.12)',
         'marquee-glow': '0 0 16px rgba(228, 87, 46, 0.4), 0 0 30px rgba(228, 87, 46, 0.18)',
         'cathode-glow': '0 0 10px rgba(46, 196, 182, 0.55), 0 0 20px rgba(46, 196, 182, 0.2)',
-        'danger-burn': '0 0 16px rgba(214, 40, 57, 0.45)',
       },
       keyframes: {
         marqueeBulb: {

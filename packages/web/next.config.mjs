@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  cleanDistDir: true,
   transpilePackages: ['@watchparty/shared', '@watchparty/client', 'three'],
   webpack: (config) => {
     config.resolve.extensionAlias = {
