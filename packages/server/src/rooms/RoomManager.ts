@@ -37,11 +37,33 @@ export class RoomManager {
   private baseUrl: string;
   private redisAdapter?: RedisRoomAdapter;
   private roomStorage?: IRoomStorage;
+  private pruneTimer?: NodeJS.Timeout;
 
   constructor(baseUrl = "http://localhost:3000") {
     this.roomsById = new Map();
     this.roomsByCode = new Map();
     this.baseUrl = baseUrl;
+
+    this.pruneTimer = setInterval(() => {
+      this.pruneAllRoomsChat();
+    }, 60_000);
+    if (this.pruneTimer.unref) {
+      this.pruneTimer.unref();
+    }
+  }
+
+  public pruneAllRoomsChat(): void {
+    const now = Date.now();
+    for (const room of this.roomsById.values()) {
+      room.pruneExpiredChat(now);
+    }
+  }
+
+  public destroy(): void {
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = undefined;
+    }
   }
 
   public setRedisAdapter(adapter: RedisRoomAdapter): void {

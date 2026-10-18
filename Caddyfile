@@ -4,52 +4,43 @@
 # ==============================================================================
 
 {
-  # Global options
-  email {$ACME_EMAIL:admin@watchparty.app}
+  email {$ACME_EMAIL:mangalapalli.sohum2026@vitstudent.ac.in}
   admin off
 }
 
-# Primary Domain (set via DOMAIN env var or fallback)
-{$DOMAIN:watchparty.example.com} {
-  # Enable modern compression algorithms
+# Direct Elastic IP fallback (HTTP :80)
+:80 {
   encode zstd gzip
-
-  # Hardened security headers
-  header {
-    # Strict Transport Security (HSTS): 2 years with subdomains and preload
-    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-    # Prevent MIME sniffing
-    X-Content-Type-Options "nosniff"
-    # Prevent clickjacking
-    X-Frame-Options "SAMEORIGIN"
-    # Referrer policy for privacy
-    Referrer-Policy "strict-origin-when-cross-origin"
-    # Disable dangerous browser permissions
-    Permissions-Policy "camera=(), geolocation=(), payment=()"
-    # Cache control for PWA static assets vs dynamic responses
-    @static path *.js *.css *.svg *.png *.ico *.woff2
-    header @static Cache-Control "public, max-age=31536000, immutable"
-  }
-
-  # Transparent reverse proxy to Node.js application container with WebSockets support
   reverse_proxy {$APP_UPSTREAM:app:3001} {
-    # Header passing for real client IP and TLS detection
     header_up Host {host}
     header_up X-Real-IP {remote_host}
     header_up X-Forwarded-For {remote_host}
     header_up X-Forwarded-Proto {scheme}
+    buffer_requests false
+    flush_interval -1
+  }
+}
 
-    # Health check for seamless failover / restarts
-    health_uri /health
-    health_interval 10s
-    health_timeout 5s
+# Primary Domains with Automatic Let's Encrypt HTTPS (:443)
+{$DOMAIN:3.7.195.152.sslip.io}, 3.7.195.152.nip.io {
+  encode zstd gzip
 
-    # Unbuffered streaming for real-time WebSocket frames & large media payloads
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+
+  reverse_proxy {$APP_UPSTREAM:app:3001} {
+    header_up Host {host}
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+    header_up X-Forwarded-Proto https
     buffer_requests false
     flush_interval -1
   }
 
-  # Access logging in structured JSON format
   log {
     output stdout
     format json

@@ -24,8 +24,14 @@
       "@watchparty/shared": [
         "../shared/src/index.ts"
       ],
+      "@watchparty/shared/*": [
+        "../shared/src/*"
+      ],
       "@watchparty/client": [
         "../client/src/index.ts"
+      ],
+      "@watchparty/client/*": [
+        "../client/src/*"
       ]
     },
     "plugins": [
@@ -41,6 +47,7 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next"
   ]
 }

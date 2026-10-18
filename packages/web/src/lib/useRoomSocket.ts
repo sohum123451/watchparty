@@ -60,6 +60,10 @@ export interface RoomSocketHandle {
   leave: () => void;
   /** Manually trigger a reconnect attempt (from 'reconnecting' or error states). */
   retry: () => void;
+  /** Map of userId -> isSpeaking for audio ducking and voice indicator rings */
+  speakingMap: Record<string, boolean>;
+  /** True when any room voice participant is currently speaking (for Rave auto-ducking) */
+  isVoiceActive: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,7 +82,7 @@ function backoffMs(attempt: number): number {
 
 function resolveWsUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_WS_URL;
-  if (envUrl) {
+  if (envUrl && !envUrl.includes('pinggy.net')) {
     if (envUrl.startsWith('ws://') || envUrl.startsWith('wss://')) return envUrl;
     const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${proto}//${envUrl}`;
@@ -88,8 +92,6 @@ function resolveWsUrl(): string {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return `ws://${window.location.hostname}:3001`;
     }
-    // Remote / Vercel production: connect directly to Render WebSocket node
-    return 'wss://watchparty-server-2zjh.onrender.com';
   }
   return 'wss://watchparty-server-2zjh.onrender.com';
 }
@@ -106,6 +108,7 @@ export function useRoomSocket({
 }: RoomSocketOptions): RoomSocketHandle {
   const [state, setState] = useState<RoomConnectionState>('idle');
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [speakingMap, setSpeakingMap] = useState<Record<string, boolean>>({});
 
   // Stable refs (don't re-trigger effects when they change)
   const wsRef = useRef<WebSocket | null>(null);
@@ -237,6 +240,16 @@ export function useRoomSocket({
         }
       }
 
+      if (msg.type === 'ROOM_VOICE_STATE_UPDATED') {
+        const map: Record<string, boolean> = {};
+        if (Array.isArray(msg.payload?.participants)) {
+          for (const p of msg.payload.participants) {
+            map[p.userId] = Boolean(p.isSpeaking);
+          }
+        }
+        setSpeakingMap(map);
+      }
+
       onMessageRef.current(msg);
     };
 
@@ -329,5 +342,7 @@ export function useRoomSocket({
     connect();
   }, [connect]);
 
-  return { state, roomError, send, leave, retry };
+  const isVoiceActive = Object.values(speakingMap).some(Boolean);
+
+  return { state, roomError, send, leave, retry, speakingMap, isVoiceActive };
 }

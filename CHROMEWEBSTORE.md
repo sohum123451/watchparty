@@ -10,8 +10,8 @@ This document is the single source of truth for the Chrome Web Store Developer D
 **WatchParty - Stream Synchronizer**
 
 ### Summary / Short Description (132 characters max)
-*Synchronize video playback across Netflix, Disney+, Prime Video, YouTube, Hulu, and Max with friends in real time.*
-*(Character count: 119)*
+*Synchronize video playback across Netflix, Disney+, Prime Video, YouTube, JioHotstar, and Max with friends in real time.*
+*(Character count: 122)*
 
 ### Category
 **Productivity / Social & Communication**
@@ -25,7 +25,7 @@ WatchParty links your browser to virtual watch party rooms. When any friend play
 
 🌟 KEY FEATURES
 • Precision Drift Engine: Automatically keeps all viewers within 50ms sync using smooth, micro-rate nudging and adaptive seeking.
-• Universal Streaming Compatibility: Native support for Netflix, Disney+, Amazon Prime Video, YouTube, Hulu, and Max.
+• Universal Streaming Compatibility: Native support for Netflix, Disney+, JioHotstar, Amazon Prime Video, YouTube, Hulu, and Max.
 • Zero-Proxy Security & Legitimate Access: WatchParty never proxies, intercepts, or downloads video streams. Every member uses their own legitimate streaming subscription.
 • Unobtrusive In-Video HUD: Floating, transparent sync status pill showing room connection, drift, and host role.
 • Flexible Host Mode: Toggle "I'm the Host" to command playback for the whole party, or let members enjoy free-form collaborative control.
@@ -54,6 +54,8 @@ The Chrome Web Store review team requires specific, plain-English reasons for ev
 | Host Pattern | Specific Plain-English Justification |
 | :--- | :--- |
 | `https://*.netflix.com/*` | Required to inject the content script on Netflix playback pages so it can attach to the HTML5 video element and read/apply play, pause, and seek events. |
+| `https://*.hotstar.com/*` | Required to attach to the JioHotstar player `<video>` element to synchronize playback timestamps with room members. |
+| `https://*.jiocinema.com/*` | Required to detect the JioCinema/JioHotstar web player container and apply synchronized play, pause, and seek events. |
 | `https://*.disneyplus.com/*` | Required to detect the Disney+ player `<video>` element and apply synchronized playback rate nudging and position sync. |
 | `https://*.amazon.com/*` | Required to locate the Prime Video web player container on Amazon and sync playback actions. |
 | `https://*.primevideo.com/*` | Required to locate the Prime Video standalone player `<video>` element for party synchronization. |

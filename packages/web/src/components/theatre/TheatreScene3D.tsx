@@ -314,16 +314,17 @@ export function TheatreScene3D({
     <div className={`theatre-scene-3d-wrapper relative w-full h-full overflow-hidden ${className}`}>
       <Canvas
         camera={{ position: [0, 2.6, 7.8], fov: 50 }}
-        dpr={[1, 1.5]} // Cap devicePixelRatio at 1.5 for performance
-        frameloop={isTabVisible ? 'always' : 'never'} // Pause when tab hidden
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
+        frameloop={isTabVisible ? 'always' : 'never'}
         gl={{
-          antialias: true,
+          antialias: false,
           alpha: true,
           powerPreference: 'high-performance',
           stencil: false,
           depth: true,
         }}
-        shadows={false} // Disable real-time shadows for 60fps budget
+        shadows={false}
       >
         <ambientLight intensity={0.5} color="#F3E9DC" />
         <pointLight position={[0, 4, 2]} intensity={1.8} color="#FF9F1C" />

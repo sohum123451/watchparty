@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Fraunces, Bricolage_Grotesque, DM_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -30,14 +30,32 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 import { CurtainWipe } from '@/motion/CurtainWipe';
+import { InstallAppBanner } from '@/components/InstallAppBanner';
+
+export const viewport: Viewport = {
+  themeColor: '#0E0B09',
+  colorScheme: 'dark',
+  viewportFit: 'cover',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: 'Watch Party — The Private Cinema',
   description: 'Ultra-low latency co-watching in a warm, dark, tactile theatre atmosphere. Projector light, velvet, and friends sharing the exact same frame down to the millisecond.',
   keywords: ['watch party', 'cinema', 'synchronized video', '70mm', 'theatre', 'film grain'],
   authors: [{ name: 'Watch Party Cinematheque' }],
+  manifest: '/manifest.json',
   icons: {
-    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23FF9F1C%22/></svg>',
+    icon: '/icon-192.svg',
+    apple: '/icon-192.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'WatchParty',
   },
 };
 
@@ -64,6 +82,10 @@ export default function RootLayout({
             {children}
           </PageTransition>
         </AuthProvider>
+
+        {/* PWA Physical Ticket Pass Banner */}
+        <InstallAppBanner />
+
         <Script src="https://accounts.google.com/gsi/client" strategy="lazyOnload" />
       </body>
     </html>

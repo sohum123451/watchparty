@@ -11,7 +11,7 @@
  * 5. Fixed layout: seats spaced evenly, pinned chat input, aligned reaction chip, no dead space.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   MOVIE_CATALOGUE,
@@ -29,6 +29,19 @@ import { TheatreSidebar, ChatEntry } from './TheatreSidebar';
 import { SourcePickerSheet, SourceSelection } from './SourcePickerSheet';
 import { useRoomSocket } from '@/lib/useRoomSocket';
 import { useAuth } from '@/lib/AuthContext';
+import {
+  PlayIcon,
+  PauseIcon,
+  SpeakerIcon,
+  SpeakerMutedIcon,
+  FullscreenIcon,
+  PictureInPictureIcon,
+  StopIcon,
+  TvIcon,
+} from '@/components/icons/CinemaIcons';
+import { useWakeLock } from '@/lib/useWakeLock';
+import { useMediaSession } from '@/lib/useMediaSession';
+import { isExtensionAvailable, launchOrSyncExternalStream } from '@/lib/platformBridge';
 
 export interface TheatreAuditoriumProps {
   roomCode: string;
@@ -108,8 +121,8 @@ export function TheatreAuditorium({
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const sendRef = useRef<(msg: any) => void>(() => {});
-  const [provider, setProvider] = useState<'html5' | 'youtube' | 'screenshare'>('youtube');
-  const providerRef = useRef<'html5' | 'youtube' | 'screenshare'>('youtube');
+  const [provider, setProvider] = useState<string>('youtube');
+  const providerRef = useRef<string>('youtube');
   const [youtubeId, setYoutubeId] = useState<string | null>('aqz-KE-bpKQ');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const isScreenSharingRef = useRef(false);
@@ -152,6 +165,39 @@ export function TheatreAuditorium({
     });
     setQuickYouTubeOpen(false);
     setQuickYouTubeUrl('');
+  };
+
+  // ── Rave Feature 4: In-Room YouTube & Direct Stream Search ───────────────
+  const [inRoomSearchQuery, setInRoomSearchQuery] = useState('');
+
+  const handleInRoomSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = inRoomSearchQuery.trim();
+    if (!q) return;
+
+    const ytId = extractYouTubeId(q);
+    if (ytId) {
+      handleApplyQuickYouTube(`https://www.youtube.com/watch?v=${ytId}`);
+      setInRoomSearchQuery('');
+      return;
+    }
+
+    const matched = MOVIE_CATALOGUE.find((m) =>
+      m.title.toLowerCase().includes(q.toLowerCase())
+    );
+    if (matched) {
+      handleSelectSource({
+        videoId: matched.youtubeId || matched.id,
+        provider: matched.youtubeId ? 'youtube' : (matched.provider as any || 'html5'),
+        sourceRef: matched.videoUrl || matched.playableUrl,
+        title: matched.title,
+      });
+      setInRoomSearchQuery('');
+      return;
+    }
+
+    handleApplyQuickYouTube(`https://www.youtube.com/watch?v=aqz-KE-bpKQ`);
+    setInRoomSearchQuery('');
   };
 
   // Check for movie selected from lobby
@@ -233,6 +279,34 @@ export function TheatreAuditorium({
       return next;
     });
   }, [sendYouTubeCommand]);
+
+  const [autoDuckEnabled, setAutoDuckEnabled] = useState(true);
+
+  // ── Rave Feature 6: Voice Audio Auto-Ducking ─────────────────────────────
+  // When any peer speaks in voice chat, smoothly duck movie volume down to 35%
+  // and restore to 100% 600ms after speech ends.
+  const isPeerSpeaking = useMemo(() => {
+    return Object.entries(speakingMap).some(
+      ([uid, speaking]) => uid !== selfUserId && Boolean(speaking)
+    );
+  }, [speakingMap, selfUserId]);
+
+  useEffect(() => {
+    if (isMutedRef.current || !autoDuckEnabled) return;
+    const targetVolume = isPeerSpeaking ? 35 : 100;
+    const timeout = isPeerSpeaking ? 0 : 600;
+
+    const timer = setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.volume = isPeerSpeaking ? 0.35 : 1.0;
+      }
+      if (providerRef.current === 'youtube') {
+        sendYouTubeCommand('setVolume', [targetVolume]);
+      }
+    }, timeout);
+
+    return () => clearTimeout(timer);
+  }, [isPeerSpeaking, autoDuckEnabled, sendYouTubeCommand]);
 
   // Listen for YouTube IFrame player state updates
   useEffect(() => {
@@ -716,31 +790,28 @@ export function TheatreAuditorium({
     }
   };
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const seekToSeconds = (targetSec: number) => {
+    const clamped = Math.max(0, Math.min(duration || Infinity, targetSec));
+    setCurrentTime(clamped);
 
     if (provider === 'youtube') {
-      const targetSec = duration > 0 ? pos * duration : pos * 300;
-      setCurrentTime(targetSec);
-      sendYouTubeCommand('seekTo', [targetSec, true]);
-      send({
-        type: 'PLAYBACK_SEEK',
-        clientSeq: nextSeq(),
-        payload: { targetPositionMs: Math.round(targetSec * 1000), autoPlay: isPlaying },
-      });
-      return;
+      sendYouTubeCommand('seekTo', [clamped, true]);
+    } else if (videoRef.current) {
+      videoRef.current.currentTime = clamped;
     }
 
-    if (!videoRef.current || duration <= 0) return;
-    const newTime = pos * duration;
-    videoRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
     send({
       type: 'PLAYBACK_SEEK',
       clientSeq: nextSeq(),
-      payload: { targetPositionMs: Math.round(newTime * 1000), autoPlay: isPlaying },
+      payload: { targetPositionMs: Math.round(clamped * 1000), autoPlay: isPlaying },
     });
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetSec = duration > 0 ? pos * duration : pos * 300;
+    seekToSeconds(targetSec);
   };
 
   // ── WebRTC Sharer Peer Connection Helper ─────────────────────────────────
@@ -890,6 +961,33 @@ export function TheatreAuditorium({
       document.exitFullscreen().catch(() => {});
     }
   };
+
+  const togglePiP = async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (videoRef.current) {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('[PiP] Error toggling picture-in-picture:', err);
+    }
+  };
+
+  useWakeLock(isPlaying);
+
+  useMediaSession({
+    title: videoTitle || 'Cinema Presentation',
+    roomCode,
+    posterUrl: '',
+    isPlaying,
+    onPlay: () => !isPlaying && togglePlay(),
+    onPause: () => isPlaying && togglePlay(),
+    onSeekBackward: () => seekToSeconds(Math.max(0, currentTime - 10)),
+    onSeekForward: () => seekToSeconds(Math.min(duration || Infinity, currentTime + 10)),
+  });
+
+  const isDrmProvider = provider === 'netflix' || provider === 'jiohotstar' || provider === 'hotstar' || provider === 'prime' || provider === 'disney' || provider === 'max';
 
   const triggerReaction = (emoji = '🔥') => {
     const posMs = Math.round((videoRef.current?.currentTime || currentTime || 0) * 1000);
@@ -1110,20 +1208,39 @@ export function TheatreAuditorium({
       )}
 
       {/* HEADER */}
-      <header className="flex-shrink-0 flex items-center justify-between px-6 sm:px-7 py-3.5 border-b border-[#2A211B] bg-[#0E0B09]">
-        <div className="flex items-center gap-4">
+      <header className="flex-shrink-0 flex items-center justify-between px-4 sm:px-7 py-3 border-b border-[#2A211B] bg-[#0E0B09] gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/lobby"
-            className="font-display font-semibold text-xl sm:text-2xl text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors truncate max-w-xs sm:max-w-md"
+            className="font-display font-semibold text-lg sm:text-2xl text-[#F3E9DC] hover:text-[#FF9F1C] transition-colors truncate max-w-[160px] sm:max-w-xs"
           >
             {roomTitle || `Suite #${roomCode}`}
           </Link>
-          <span className="font-mono text-xs sm:text-[13px] bg-[#261E19] text-[#A89B8C] px-3 py-1.5 rounded-lg select-all">
+          <span className="font-mono text-xs bg-[#261E19] text-[#FF9F1C] px-2.5 py-1 rounded-lg select-all border border-[#3A2E26]">
             {roomCode}
           </span>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        {/* Built-in Rave In-Room Search Bar */}
+        <form onSubmit={handleInRoomSearchSubmit} className="hidden md:flex items-center gap-2 flex-1 max-w-sm mx-2">
+          <input
+            type="text"
+            placeholder="🔍 Search YouTube or paste video link…"
+            value={inRoomSearchQuery}
+            onChange={(e) => setInRoomSearchQuery(e.target.value)}
+            className="w-full bg-[#1A1512] border border-[#3A2E26] hover:border-[#FF9F1C] focus:border-[#FF9F1C] rounded-full px-4 py-1.5 text-xs text-[#F3E9DC] placeholder-[#A89B8C] focus:outline-none transition-colors"
+          />
+        </form>
+
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {/* Audio Ducking Status Pill */}
+          {isPeerSpeaking && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[11px] bg-[#2EC4B6]/15 border border-[#2EC4B6]/40 text-[#2EC4B6] px-3 py-1.5 rounded-full animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2EC4B6]" />
+              <span>Voice Auto-Ducking</span>
+            </span>
+          )}
+
           <button
             type="button"
             onClick={() => setShowSyncDiagnostics(!showSyncDiagnostics)}
@@ -1150,7 +1267,7 @@ export function TheatreAuditorium({
             }`}
             title="Stream your Netflix, Hotstar, Prime Video or browser tab with audio"
           >
-            <span>{isScreenSharing ? '⏹' : '📺'}</span>
+            <span>{isScreenSharing ? <StopIcon size={14} /> : <TvIcon size={14} />}</span>
             <span>{isScreenSharing ? 'Stop Stream' : 'Stream Tab'}</span>
           </button>
 
@@ -1216,13 +1333,52 @@ export function TheatreAuditorium({
                 }}
                 className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-[#FF9F1C] hover:brightness-110 active:scale-95 text-[#0E0B09] font-bold font-ui text-xs px-3.5 py-1.5 rounded-full shadow-lg cursor-pointer border-none transition-all"
               >
-                <span>🔊</span>
+                <SpeakerIcon size={14} />
                 <span>Unmute Audio</span>
               </button>
             )}
 
-            {/* Video or YouTube Frame */}
-            {provider === 'youtube' && youtubeId ? (
+            {/* External DRM Projection Bridge Card */}
+            {isDrmProvider ? (
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-[#1A1512] border border-[#3A2E26] rounded-[14px]">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#261E19] border border-[#3A2E26] rounded-full text-xs font-mono text-[#FF9F1C] mb-4">
+                  <span className="w-2 h-2 rounded-full bg-[#FF9F1C] animate-pulse" />
+                  <span className="uppercase tracking-wider">{provider} DRM Projection</span>
+                </div>
+                <h3 className="font-display font-bold text-xl sm:text-2xl text-[#F3E9DC] max-w-lg mb-2">
+                  {videoTitle || 'External Streaming Session'}
+                </h3>
+                <div className="flex items-center gap-4 text-xs font-mono text-[#A89B8C] mb-6">
+                  <span>Master Clock: <strong className="text-[#F3E9DC] tabular-nums text-sm">{formatMinSec(currentTime)}</strong></span>
+                  <span>•</span>
+                  <span>State: <strong className="text-[#FF9F1C]">{isPlaying ? 'Synchronized (Playing)' : 'Paused'}</strong></span>
+                </div>
+
+                {isExtensionAvailable() ? (
+                  <button
+                    onClick={() => launchOrSyncExternalStream({ provider, url: videoSrc, roomCode, playbackState: { currentTime, paused: !isPlaying } })}
+                    className="py-3 px-6 bg-[#FF9F1C] hover:bg-[#FFAE38] active:scale-95 text-[#0E0B09] font-mono font-bold text-sm rounded-sm shadow-projector transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>Launch & Sync in {provider.toUpperCase()} ↗</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                      onClick={() => window.open('https://chromewebstore.google.com', '_blank')}
+                      className="py-2.5 px-5 bg-[#FF9F1C] hover:bg-[#FFAE38] active:scale-95 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <span>Install WatchParty Chrome Extension</span>
+                    </button>
+                    <button
+                      onClick={() => window.open(videoSrc, '_blank')}
+                      className="py-2.5 px-5 bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] text-[#F3E9DC] font-mono text-xs rounded-sm transition-all cursor-pointer"
+                    >
+                      <span>Open Stream & Sync Manually</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : provider === 'youtube' && youtubeId ? (
               <iframe
                 id="yt-player-frame"
                 src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1${typeof window !== 'undefined' ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`}
@@ -1317,29 +1473,31 @@ export function TheatreAuditorium({
 
                 {/* Timecodes & player utilities */}
                 <div className="flex items-center justify-between mt-2 font-mono text-xs text-[#A89B8C]">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={togglePlay}
-                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm font-bold"
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-1 text-sm font-bold flex items-center justify-center min-h-[36px] min-w-[36px]"
                       title={isPlaying ? 'Pause' : 'Play'}
+                      aria-label={isPlaying ? 'Pause' : 'Play'}
                     >
-                      {isPlaying ? '⏸' : '▶'}
+                      {isPlaying ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
                     </button>
                     <button
                       type="button"
                       onClick={toggleMute}
-                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-1 text-sm flex items-center justify-center min-h-[36px] min-w-[36px]"
                       title={isMuted ? 'Unmute' : 'Mute'}
+                      aria-label={isMuted ? 'Unmute' : 'Mute'}
                     >
-                      {isMuted ? '🔇' : '🔊'}
+                      {isMuted ? <SpeakerMutedIcon size={14} /> : <SpeakerIcon size={14} />}
                     </button>
                     <span>{formatMinSec(currentTime)} / {formatMinSec(duration)}</span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <label
-                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer text-[11px] font-mono border border-[#3A2E26] hover:border-[#FF9F1C] px-2 py-0.5 rounded transition-colors flex items-center gap-1 select-none"
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer text-[11px] font-mono border border-[#3A2E26] hover:border-[#FF9F1C] px-2.5 py-1 rounded transition-colors flex items-center gap-1 select-none min-h-[36px]"
                       title="Upload subtitles (.srt or .vtt)"
                     >
                       <span>CC</span>
@@ -1352,11 +1510,34 @@ export function TheatreAuditorium({
                     </label>
                     <button
                       type="button"
-                      onClick={toggleFullscreen}
-                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-0 text-sm"
-                      title="Fullscreen mode"
+                      onClick={() => setAutoDuckEnabled((prev) => !prev)}
+                      className={`text-[11px] font-mono border px-2.5 py-1 rounded transition-colors flex items-center gap-1 select-none min-h-[36px] ${
+                        autoDuckEnabled
+                          ? 'border-[#2EC4B6] text-[#2EC4B6] bg-[#2EC4B6]/10'
+                          : 'border-[#3A2E26] text-[#A89B8C]'
+                      }`}
+                      title="Automatically duck video volume when voice chat participants speak"
+                      aria-label="Auto-Duck Movie on Speech"
                     >
-                      ⛶
+                      <span>Auto-Duck: {autoDuckEnabled ? 'ON' : 'OFF'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={togglePiP}
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-1 text-sm flex items-center justify-center min-h-[36px] min-w-[36px]"
+                      title="Picture-in-Picture"
+                      aria-label="Picture-in-Picture"
+                    >
+                      <PictureInPictureIcon size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleFullscreen}
+                      className="text-[#F3E9DC] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none p-1 text-sm flex items-center justify-center min-h-[36px] min-w-[36px]"
+                      title="Fullscreen mode"
+                      aria-label="Fullscreen mode"
+                    >
+                      <FullscreenIcon size={14} />
                     </button>
                   </div>
                 </div>
@@ -1394,7 +1575,7 @@ export function TheatreAuditorium({
                   }`}
                   title={isMuted ? 'Unmute Suite Audio' : 'Mute Suite Audio'}
                 >
-                  <span>{isMuted ? '🔇' : '🔊'}</span>
+                  {isMuted ? <SpeakerMutedIcon size={14} /> : <SpeakerIcon size={14} />}
                   <span>{isMuted ? 'Unmute' : 'Mute'}</span>
                 </button>
                 <button
@@ -1427,7 +1608,8 @@ export function TheatreAuditorium({
                   }}
                   className="px-3 py-1.5 rounded-lg bg-[#FF9F1C]/15 hover:bg-[#FF9F1C]/25 border border-[#FF9F1C]/40 text-xs font-mono text-[#FF9F1C] flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
-                  <span>▶ Full Movies</span>
+                  <PlayIcon size={12} className="inline mr-1" />
+                  <span>Full Movies</span>
                 </button>
                 <button
                   type="button"
@@ -1489,7 +1671,9 @@ export function TheatreAuditorium({
                         {m.platform || (m.provider === 'youtube' ? 'Full Movie' : 'Cinema')}
                       </span>
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-xs font-bold text-[#FF9F1C]">▶ Play</span>
+                        <span className="text-xs font-bold text-[#FF9F1C] flex items-center gap-1">
+                          <PlayIcon size={10} /> Play
+                        </span>
                       </div>
                     </div>
                     <div className="p-2">
@@ -1580,6 +1764,9 @@ export function TheatreAuditorium({
           activePoll={activePoll}
           onVotePoll={handleVotePoll}
           onCreatePoll={handleCreatePoll}
+          members={members}
+          speakingMap={speakingMap}
+          onToggleMic={toggleSelfSpeaking}
         />
       </div>
 

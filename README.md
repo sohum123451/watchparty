@@ -11,13 +11,12 @@
 
 ## 🚀 Live Production Deployment
 
-WatchParty is deployed to AWS Graviton2 (`t4g.small`, `ap-south-1`) with automated Let's Encrypt TLS:
+WatchParty is now deployed to a **free‑tier Fly.io shared‑CPU VM** with automated TLS.
 
-- **Live Web App (Free HTTPS DNS)**: **[https://3.7.195.152.sslip.io](https://3.7.195.152.sslip.io)**
-- **Backup HTTPS Mirror**: **[https://3.7.195.152.nip.io](https://3.7.195.152.nip.io)**
-- **Direct IP (HTTP)**: **[http://3.7.195.152](http://3.7.195.152)**
-- **System Health Status**: **[https://3.7.195.152.sslip.io/health](https://3.7.195.152.sslip.io/health)**
-- **System Status Dashboard**: **[https://3.7.195.152.sslip.io/status](https://3.7.195.152.sslip.io/status)**
+- **Live Web App (Free HTTPS DNS)**: **[https://watchparty.fly.dev](https://watchparty.fly.dev)**
+- **Backup Mirror**: **[https://watchparty.fly.dev (Edge CDN)](https://watchparty.fly.dev)**
+- **System Health Status**: **[https://watchparty.fly.dev/health](https://watchparty.fly.dev/health)**
+- **System Status Dashboard**: **[https://watchparty.fly.dev/status](https://watchparty.fly.dev/status)**
 
 ---
 
@@ -236,6 +235,25 @@ interface NormalizedSourceDescriptor {
 - **robots.txt Compliance**: Automatically queries and parses upstream `/robots.txt` directives with cached TTL entries.
 - **Frame Ancestors & Security Headers**: Honors upstream `X-Frame-Options` (`DENY`, `SAMEORIGIN`) and `Content-Security-Policy: frame-ancestors`. When framing is disallowed, flags `embedAllowed: false` and safely falls back.
 - **Rate Limiting & Sanitization**: Strict per-user token bucket rate limiting on `/api/resolve`, with HTML/XSS sanitization on all extracted metadata.
+
+---
+
+## Universal Streaming Service Support & Extension Bridge (`@watchparty/extension`)
+
+WatchParty synchronizes playback across major streaming platforms in real time:
+
+- **Supported Streaming Platforms**:
+  - **Netflix** (`https://*.netflix.com/*`)
+  - **JioHotstar** (`https://*.hotstar.com/*`) & **JioCinema** (`https://*.jiocinema.com/*`)
+  - **Disney+** (`https://*.disneyplus.com/*`)
+  - **Amazon Prime Video** (`https://*.amazon.com/*` & `https://*.primevideo.com/*`)
+  - **YouTube** (`https://*.youtube.com/*`)
+  - **Max** (`https://*.max.com/*`) & **Hulu** (`https://*.hulu.com/*`)
+  - **Public Domain & Creative Commons Cinema** (direct HLS `.m3u8` and MP4 streams)
+- **Extension Bridge Architecture**:
+  - Automatically hooks into native HTML5 `<video>` elements on streaming platforms.
+  - Sub-frame NTP synchronization maintains synchronization within 50ms across all participants.
+  - Zero DRM interception: streams are rendered legitimately through each user's own streaming service session.
 
 ---
 

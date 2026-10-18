@@ -3,6 +3,7 @@ import { MediaService } from "./MediaService.js";
 import { TokenSecurity } from "../auth/crypto/tokens.js";
 import { RoomManager } from "../rooms/RoomManager.js";
 import { auditLogger } from "../security/AuditLogger.js";
+import { getClientIp } from "../utils/ip.js";
 
 const tokenRateLimits = new Map<string, { count: number; resetAt: number }>();
 
@@ -104,7 +105,7 @@ export async function handleMediaRoute(
       }
 
       // 0. Rate limiting on media token requests (max 30 requests/minute)
-      const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown";
+      const clientIp = getClientIp(req);
       const rateLimitKey = `${clientIp}_${url.searchParams.get("roomCode") || ""}`;
       if (!checkTokenRateLimit(rateLimitKey, 30, 60000)) {
         sendJson(res, 429, {

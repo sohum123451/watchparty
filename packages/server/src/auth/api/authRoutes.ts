@@ -2,6 +2,7 @@ import http from "node:http";
 import { AuthService } from "../services/AuthService.js";
 import { TokenSecurity } from "../crypto/tokens.js";
 import { defaultSecurityMiddleware } from "../../security/headers.js";
+import { getClientIp } from "../../utils/ip.js";
 
 function parseCookies(req: http.IncomingMessage): Record<string, string> {
   const list: Record<string, string> = {};
@@ -78,7 +79,7 @@ export async function handleAuthRoute(
   const isAllowed = origin ? defaultSecurityMiddleware.isOriginAllowed(origin, hostHeader) : false;
   (res as any)._reqOrigin = isAllowed ? origin : null;
 
-  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "127.0.0.1";
+  const clientIp = getClientIp(req);
   const deviceInfo = (req.headers["user-agent"] as string) || "Unknown client";
 
   if (req.method === "OPTIONS") {

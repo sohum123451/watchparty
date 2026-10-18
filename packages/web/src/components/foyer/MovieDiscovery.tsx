@@ -21,6 +21,7 @@ import {
 import { useAnime } from '@/motion/useAnime';
 import { MotionDurations, MotionEasings, MotionStaggers } from '@/motion/tokens';
 import { stagger } from 'animejs';
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, StarIcon } from '@/components/icons/CinemaIcons';
 
 export interface MovieDiscoveryProps {
   onSelectMovieForSuite?: (movie: Movie) => void;
@@ -228,10 +229,11 @@ export function MovieDiscovery({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-muted hover:text-text cursor-pointer"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center justify-center min-h-[36px] min-w-[36px] text-muted hover:text-text cursor-pointer"
               title="Clear search"
+              aria-label="Clear search"
             >
-              ✕
+              <CloseIcon size={14} />
             </button>
           )}
         </div>
@@ -247,17 +249,19 @@ export function MovieDiscovery({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => scrollCarousel('left')}
-              className="p-1 px-2 bg-surface-2 hover:bg-surface-3 active:scale-95 border border-border-brass rounded-sm text-xs text-muted hover:text-accent transition-all cursor-pointer shadow-sm"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center bg-surface-2 hover:bg-surface-3 active:scale-95 border border-border-brass rounded-sm text-muted hover:text-accent transition-all cursor-pointer shadow-sm"
               title="Scroll Hallways Left"
+              aria-label="Scroll Hallways Left"
             >
-              ◀
+              <ChevronLeftIcon size={14} />
             </button>
             <button
               onClick={() => scrollCarousel('right')}
-              className="p-1 px-2 bg-surface-2 hover:bg-surface-3 active:scale-95 border border-border-brass rounded-sm text-xs text-muted hover:text-accent transition-all cursor-pointer shadow-sm"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center bg-surface-2 hover:bg-surface-3 active:scale-95 border border-border-brass rounded-sm text-muted hover:text-accent transition-all cursor-pointer shadow-sm"
               title="Scroll Hallways Right"
+              aria-label="Scroll Hallways Right"
             >
-              ▶
+              <ChevronRightIcon size={14} />
             </button>
           </div>
         </div>
@@ -359,8 +363,8 @@ export function MovieDiscovery({
 
                 {/* Top Badges: Rating & Format */}
                 <div className="absolute top-2 left-2 right-2 flex justify-between items-center text-[10px] font-mono">
-                  <span className="px-1.5 py-0.5 bg-bg/90 border border-border-brass text-accent font-bold rounded-sm backdrop-blur-sm">
-                    ★ {m.rating.toFixed(1)}
+                  <span className="px-1.5 py-0.5 bg-bg/90 border border-border-brass text-accent font-bold rounded-sm backdrop-blur-sm flex items-center gap-1">
+                    <StarIcon size={10} className="text-accent fill-current" /> {m.rating.toFixed(1)}
                   </span>
                   <span className="px-1.5 py-0.5 bg-bg/80 border border-border-subtle text-muted rounded-sm backdrop-blur-sm uppercase">
                     {m.year}
@@ -436,9 +440,10 @@ export function MovieDiscovery({
               </div>
               <button
                 onClick={() => setPreviewMovie(null)}
-                className="text-muted hover:text-text cursor-pointer font-mono text-sm px-2 py-0.5"
+                className="text-muted hover:text-text cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+                aria-label="Close dialog"
               >
-                ✕
+                <CloseIcon size={14} />
               </button>
             </div>
 
@@ -462,7 +467,9 @@ export function MovieDiscovery({
                     <span>•</span>
                     <span>{previewMovie.runtime} min</span>
                     <span>•</span>
-                    <span className="text-accent font-bold">★ {previewMovie.rating.toFixed(1)} / 10</span>
+                    <span className="text-accent font-bold flex items-center gap-1">
+                      <StarIcon size={12} className="text-accent fill-current" /> {previewMovie.rating.toFixed(1)} / 10
+                    </span>
                   </div>
                 </div>
 

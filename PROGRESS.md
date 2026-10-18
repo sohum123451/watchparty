@@ -92,3 +92,34 @@ A Trip to the Moon (lobby tonight-picks), plus static pick IDs and colours.
   - `npm run test:extension`: 22/22 passing
 - **Production Build**: `npm run build:web` succeeds cleanly with all static and dynamic routes prerendered.
 
+---
+
+## Phase 7 – Native App Experience & Progressive Web App (PWA) ✅
+- **App Router Web App Manifest**: Created `packages/web/src/app/manifest.ts` exporting standalone display, portrait-primary orientation, `#0E0B09` theme and background colors, and icon definitions.
+- **Mobile Viewport & Safe Area Insets**: Exported Next.js 14 `viewport` metadata in `packages/web/src/app/layout.tsx` (`viewportFit: 'cover'`, `width: 'device-width'`, `initialScale: 1`, `maximumScale: 1`, `userScalable: false`). Added `.safe-top` and `.safe-bottom` CSS utilities in `packages/web/src/app/globals.css`.
+- **Install App Banner**: Created `packages/web/src/components/InstallAppBanner.tsx` capturing `beforeinstallprompt` event for Android and Desktop Chrome, and providing iOS Safari manual install guidance ("Tap Share > Add to Home Screen"). Wired into `TheatreAuditorium.tsx`.
+- **Screen WakeLock API**: Created `packages/web/src/lib/useWakeLock.ts` acquiring `navigator.wakeLock.request('screen')` during active playback and auto-reacquiring upon tab visibility recovery. Integrated into `TheatreAuditorium.tsx`.
+- **Picture-in-Picture & MediaSession API**: Created `packages/web/src/lib/useMediaSession.ts` exposing play, pause, seekforward, seekbackward lockscreen and notification shade actions. Added dedicated PiP toggle button (`PictureInPictureIcon`) in `TheatreAuditorium.tsx`.
+- **Web Push Service Worker**: Created `packages/web/public/sw.js` handling `push` events (action buttons `[ Join Screening ]` / `[ Dismiss ]`) and `notificationclick` events (focusing existing tabs or navigating to target room). Generated 192px and 512px SVG and PNG cinema icons in `packages/web/public/`.
+
+---
+
+## Phase 8 – Universal Cross-Platform Bridge & Extension DRM Architecture ✅
+- **Universal Platform Bridge**: Created `packages/web/src/lib/platformBridge.ts` providing deep linking and extension handshake for Netflix, JioHotstar, Prime Video, Disney+, Max, and YouTube across Desktop, Android, and iOS.
+- **External Projection Bridge**: Stage displays the External Projection Bridge Card on stage when DRM-protected media is active. Automatically probes for `@watchparty/extension` via `window.postMessage` and triggers synchronized playback tabs while keeping room voice chat and text active.
+- **Extension Permissions & Manifest**: Updated `packages/extension/manifest.json` and `packages/extension/src/content/content.ts` with permissions for JioHotstar (`hotstar.com`) and JioCinema (`jiocinema.com`).
+- **Audio Auto-Ducking**: Configured voice chat detector in `TheatreAuditorium.tsx` to automatically duck video volume to 35% when peers speak with a 600ms restore delay and an `Auto-Duck: ON/OFF` toggle in the player controls.
+- **Backend Infrastructure**: Real reverse proxy IP resolution (`getClientIp(req)` supporting `Fly-Client-IP`, `X-Forwarded-For`, `X-Real-IP`, `TRUST_PROXY`), STUN/TURN WebRTC credentials (`GET /api/rtc/ice-servers`), live debounced search (`GET /api/search`), and background 60s chat message pruning in `RoomManager.ts`.
+
+---
+
+## Phase 9 – Final Quality Gate & Build Verification ✅
+- **Monorepo Typecheck**: Verified `npm run typecheck` across all 5 packages (`@watchparty/shared`, `@watchparty/server`, `@watchparty/client`, `@watchparty/extension`, `@watchparty/web`) with zero errors.
+- **Server Test Suite**: 24/24 test files passing, 331/331 tests passing (`npm run test:server`).
+- **Web App Test Suite**: 5/5 test files passing, 47/47 tests passing (`npm run test:web`).
+- **Browser Extension Test Suite**: 4/4 test files passing, 22/22 tests passing (`npm run test:extension`).
+- **Complete Test Matrix**: 400/400 tests passing across 33 test suites with zero failures.
+- **Production Bundle**: Next.js production build succeeded cleanly (`npm run build:web`), prerendering 13 static pages, configuring dynamic API routes, and linking the PWA manifest and service worker.
+
+
+

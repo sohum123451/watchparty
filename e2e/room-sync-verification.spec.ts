@@ -231,8 +231,9 @@ test.describe('Room Sync & Realtime Two-Window Verification', () => {
     });
     expect(resolveRes.ok()).toBeTruthy();
     const resolveData = await resolveRes.json();
-    expect(resolveData.provider).toBe('youtube');
-    expect(resolveData.sourceRef).toContain('aqz-KE-bpKQ');
+    const descriptor = resolveData.descriptor || resolveData;
+    expect(descriptor.provider).toBe('youtube');
+    expect(descriptor.sourceRef).toContain('aqz-KE-bpKQ');
 
     // Verify /api/catalogue returns public-domain / CC films with attribution
     const catalogueRes = await page.request.get('http://localhost:3000/api/catalogue');

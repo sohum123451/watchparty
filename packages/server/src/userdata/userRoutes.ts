@@ -2,6 +2,7 @@ import http from "node:http";
 import { UserDataService } from "./UserDataService.js";
 import { AuthService } from "../auth/services/AuthService.js";
 import { TokenSecurity } from "../auth/crypto/tokens.js";
+import { getClientIp } from "../utils/ip.js";
 
 function parseCookies(req: http.IncomingMessage): Record<string, string> {
   const list: Record<string, string> = {};
@@ -77,10 +78,7 @@ export async function handleUserDataRoute(
   authService: AuthService
 ): Promise<boolean> {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const clientIp =
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.socket.remoteAddress ||
-    "127.0.0.1";
+  const clientIp = getClientIp(req);
 
   // 1. Storage serving route: /api/storage/:bucket/:key
   if (url.pathname.startsWith("/api/storage/")) {

@@ -16,6 +16,7 @@ import { MOVIE_CATALOGUE, Movie } from '@watchparty/shared';
 import { useAnime } from '@/motion/useAnime';
 import { MotionDurations, MotionEasings, MotionStaggers } from '@/motion/tokens';
 import { stagger } from 'animejs';
+import { CloseIcon, StarIcon, ChevronRightIcon, ScissorsIcon } from '@/components/icons/CinemaIcons';
 
 export interface CreateRoomSheetProps {
   isOpen: boolean;
@@ -97,17 +98,71 @@ export function CreateRoomSheet({
     setRoomCode(`${prefix}-${num}`);
   };
 
-  const handleFinishAndIlluminate = (e: React.FormEvent) => {
+  const handleFinishAndIlluminate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Punch ticket sound & transition
-    setTimeout(() => {
-      const code = roomCode.trim();
-      if (code) {
-        router.push(`/join/${encodeURIComponent(code)}`);
+    try {
+      const code = roomCode.trim().toUpperCase() || undefined;
+      const API = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
+
+      // Store initial video payload
+      if (typeof window !== 'undefined') {
+        const streamPayload = useCustomStream
+          ? {
+              videoId: `custom_${Date.now()}`,
+              provider: 'html5',
+              sourceRef: customStreamUrl,
+              title: suiteName || 'Custom Stream',
+            }
+          : {
+              videoId: selectedMovie.youtubeId || selectedMovie.id,
+              provider: selectedMovie.youtubeId ? 'youtube' : 'html5',
+              sourceRef: selectedMovie.youtubeId
+                ? `https://www.youtube.com/watch?v=${selectedMovie.youtubeId}`
+                : (selectedMovie.videoUrl || selectedMovie.playableUrl),
+              title: selectedMovie.title,
+            };
+        sessionStorage.setItem('wp_initial_movie', JSON.stringify(streamPayload));
+        localStorage.setItem('watchparty_username', hostName || 'Projectionist');
       }
-    }, 450);
+
+      const res = await fetch(`${API}/api/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hostUserName: hostName || 'Projectionist',
+          roomName: suiteName || 'Private Screening Suite',
+          roomCode: code,
+          initialVideoId: useCustomStream ? undefined : selectedMovie.id,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create room on server');
+      }
+
+      const data = await res.json();
+      const finalCode = data?.room?.roomCode || code;
+
+      if (data?.hostSessionToken && typeof window !== 'undefined' && finalCode) {
+        sessionStorage.setItem('wp_token_' + finalCode, data.hostSessionToken);
+      }
+
+      setTimeout(() => {
+        if (finalCode) {
+          router.push(`/room/${encodeURIComponent(finalCode)}`);
+        }
+      }, 350);
+    } catch (err) {
+      console.error('[CreateRoomSheet Error]:', err);
+      // Fallback route
+      const fallbackCode = roomCode.trim().toUpperCase() || Math.random().toString(36).substring(2, 8).toUpperCase();
+      router.push(`/room/${encodeURIComponent(fallbackCode)}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -147,10 +202,11 @@ export function CreateRoomSheet({
               </div>
               <button
                 onClick={onClose}
-                className="p-1 px-2 text-muted hover:text-text hover:bg-surface-3 rounded-sm font-mono text-sm cursor-pointer"
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-muted hover:text-text hover:bg-surface-3 rounded-sm transition-all cursor-pointer"
                 title="Close Drawer (Esc)"
+                aria-label="Close Drawer (Esc)"
               >
-                ✕
+                <CloseIcon size={14} />
               </button>
             </div>
 
@@ -300,8 +356,8 @@ export function CreateRoomSheet({
                         <span className="font-display font-bold text-base text-text">
                           {selectedMovie.title}
                         </span>
-                        <span className="text-[10px] font-mono text-accent">
-                          ★ {selectedMovie.rating}
+                        <span className="text-[10px] font-mono text-accent flex items-center gap-0.5">
+                          <StarIcon size={10} className="text-accent fill-current" /> {selectedMovie.rating}
                         </span>
                       </div>
                       <div className="text-xs font-sans text-muted mt-1">
@@ -689,19 +745,19 @@ export function CreateRoomSheet({
             <button
               type="button"
               onClick={() => setCurrentStep((prev) => (prev + 1) as 2 | 3)}
-              className="flex-1 py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 min-h-[36px] py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Next Frame</span>
-              <span>➔</span>
+              <ChevronRightIcon size={14} />
             </button>
           ) : (
             <button
               type="button"
               onClick={handleFinishAndIlluminate}
               disabled={isSubmitting}
-              className="flex-1 py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 disabled:opacity-50 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 min-h-[36px] py-2.5 px-4 bg-accent hover:bg-accent/90 active:scale-95 disabled:opacity-50 text-[#0E0B09] font-mono font-bold text-xs rounded-sm shadow-projector transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+              <ScissorsIcon size={14} strokeWidth={2} />
               <span>
                 {isSubmitting
                   ? 'Punching...'

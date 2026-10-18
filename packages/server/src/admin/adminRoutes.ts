@@ -3,6 +3,7 @@ import { AdminService } from "./AdminService.js";
 import { globalSentry } from "../observability/SentryClient.js";
 import { Logger, rootLogger } from "../utils/logger.js";
 import { getAdminDashboardHtml } from "../ui/AdminDashboardPage.js";
+import { getClientIp } from "../utils/ip.js";
 
 function parseCookies(req: http.IncomingMessage): Record<string, string> {
   const list: Record<string, string> = {};
@@ -57,7 +58,7 @@ export async function handleAdminRoutes(
   // 1. Client-Side Sentry & Error Telemetry Endpoint
   if (url.pathname === "/api/observability/client-errors" && req.method === "POST") {
     const body = await parseBody(req);
-    const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress;
+    const clientIp = getClientIp(req);
 
     logger.withRoomAndUser(body.roomId, body.userId).error(`[CLIENT_ERROR] ${body.message}`, {
       stack: body.stack,

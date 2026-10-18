@@ -19,16 +19,12 @@ export class SecurityMiddleware {
       "http://localhost:3001",
       "http://127.0.0.1:3000",
       "http://127.0.0.1:3001",
-      "https://*.vercel.app",
-      "https://*.onrender.com",
-      "https://*.pinggy.net",
-      "https://*.pinggy-free.link",
     ];
 
-    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || "*";
+    const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || "";
     const envOrigins = allowedOriginsEnv === "*"
       ? ["*"]
-      : allowedOriginsEnv.split(",").map((o) => o.trim()).filter(Boolean);
+      : (allowedOriginsEnv ? allowedOriginsEnv.split(",").map((o) => o.trim()).filter(Boolean) : []);
 
     if (process.env.BASE_URL) {
       try {
@@ -83,10 +79,6 @@ export class SecurityMiddleware {
       if (
         hostname === "localhost" ||
         hostname === "127.0.0.1" ||
-        hostname.endsWith(".vercel.app") ||
-        hostname.endsWith(".onrender.com") ||
-        hostname.endsWith(".pinggy.net") ||
-        hostname.endsWith(".pinggy-free.link") ||
         hostname.endsWith(".sslip.io") ||
         hostname.endsWith(".nip.io")
       ) {

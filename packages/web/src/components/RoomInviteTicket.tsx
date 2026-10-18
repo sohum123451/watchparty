@@ -53,6 +53,10 @@ export function RoomInviteTicket({
     if (joining || admitted) return;
     setJoining(true);
 
+    if (typeof window !== 'undefined' && userName.trim()) {
+      localStorage.setItem('watchparty_username', userName.trim());
+    }
+
     if (stubRightRef.current && seamFlashRef.current) {
       // 1. Perforation tear flash
       animate(seamFlashRef.current, {

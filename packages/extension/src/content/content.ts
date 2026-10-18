@@ -367,6 +367,26 @@ class WatchPartyContentScript {
 
 // Instantiate content script
 if (typeof window !== "undefined") {
+  // Announce presence to WatchParty Web App & listen for web app bridge commands
+  window.postMessage({ source: 'WATCHPARTY_EXTENSION', type: 'EXTENSION_INSTALLED', version: '1.0.0' }, '*');
+
+  window.addEventListener('message', (event) => {
+    if (event.data?.source === 'WATCHPARTY_WEB') {
+      if (event.data?.type === 'PING_EXTENSION') {
+        window.postMessage({ source: 'WATCHPARTY_EXTENSION', type: 'EXTENSION_INSTALLED', version: '1.0.0' }, '*');
+      } else if (event.data?.type === 'WATCHPARTY_LAUNCH_STREAM') {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'WATCHPARTY_ATTACH_ROOM',
+            payload: event.data.payload,
+          });
+        } catch (e) {
+          console.warn('[WatchParty Content] Failed to relay stream launch to background:', e);
+        }
+      }
+    }
+  });
+
   const coBrowse = new CoBrowseContentScript();
   coBrowse.start().then((activated) => {
     if (!activated) {
@@ -376,3 +396,4 @@ if (typeof window !== "undefined") {
     new WatchPartyContentScript();
   });
 }
+

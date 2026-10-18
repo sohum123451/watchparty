@@ -79,16 +79,50 @@ export function TheatreEnvironment({
     return true;
   }, [threeDSetting, hasWebGL, reducedMotion, isMobile]);
 
+  // Low-FPS guard for "auto" mode: if frame delta exceeds 28ms (<35 FPS) for 3s, switch to 2D
+  useEffect(() => {
+    if (threeDSetting !== 'auto' || !shouldRender3D) return;
+
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let lowFpsSeconds = 0;
+    let animId: number;
+
+    const checkFps = (now: number) => {
+      frameCount++;
+      const elapsed = now - lastTime;
+      if (elapsed >= 1000) {
+        const fps = (frameCount * 1000) / elapsed;
+        if (fps < 35) {
+          lowFpsSeconds++;
+          if (lowFpsSeconds >= 3) {
+            console.warn('[TheatreEnvironment] Low FPS detected (<35 FPS for 3s). Downgrading 3D scene for 60fps playback.');
+            setThreeDSetting('off');
+            return;
+          }
+        } else {
+          lowFpsSeconds = 0;
+        }
+        frameCount = 0;
+        lastTime = now;
+      }
+      animId = requestAnimationFrame(checkFps);
+    };
+
+    animId = requestAnimationFrame(checkFps);
+    return () => cancelAnimationFrame(animId);
+  }, [threeDSetting, shouldRender3D]);
+
   return (
     <div className={`theatre-environment relative w-full h-full flex flex-col ${className}`}>
       {/* 1. TOP 3D MODE SETTINGS TOGGLE */}
       <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 p-1 bg-surface-2/85 border border-border-brass rounded-sm font-mono text-[10px] backdrop-blur-md shadow-sm">
-        <span className="text-muted px-1">3D Engine:</span>
+        <span className="text-muted px-1.5 hidden sm:inline">3D Engine:</span>
         {(['auto', 'on', 'off'] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => setThreeDSetting(mode)}
-            className={`px-2 py-0.5 rounded-[2px] uppercase transition-all cursor-pointer ${
+            className={`min-h-[36px] min-w-[36px] px-2.5 py-1 rounded-[2px] uppercase transition-all flex items-center justify-center cursor-pointer ${
               threeDSetting === mode
                 ? 'bg-accent text-[#0E0B09] font-bold shadow-xs'
                 : 'text-muted hover:text-text'

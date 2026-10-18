@@ -25,8 +25,8 @@
     "dev:web": "npm --workspace=@watchparty/web run dev",
     "bench": "tsx bench/index.ts",
     "bench:smoke": "tsx bench/index.ts --smoke",
-    "lint": "tsc --noEmit",
-    "typecheck": "npm --workspace=@watchparty/shared run build && npm --workspace=@watchparty/server run build && npm --workspace=@watchparty/client run build && npm --workspace=@watchparty/extension run build",
+    "lint": "npm run typecheck",
+    "typecheck": "npm --workspace=@watchparty/shared run build && npm --workspace=@watchparty/server run build && npm --workspace=@watchparty/client run build && npm --workspace=@watchparty/extension run build && npm --workspace=@watchparty/web run build",
     "test:unit": "npm --workspace=@watchparty/shared test && npm --workspace=@watchparty/client test && npm --workspace=@watchparty/web test",
     "test:integration": "npm --workspace=@watchparty/server test",
     "test:e2e": "playwright test"
@@ -34,11 +34,9 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {
-    "typescript": "^5.7.3"
-  },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   }
 }

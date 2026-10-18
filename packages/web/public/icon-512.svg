@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <radialGradient id="cinemaGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF9F1C" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#E4572E" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#0E0B09" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="amberGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB347"/>
+      <stop offset="50%" stop-color="#FF9F1C"/>
+      <stop offset="100%" stop-color="#E4572E"/>
+    </linearGradient>
+    <linearGradient id="velvetBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1410"/>
+      <stop offset="100%" stop-color="#0E0B09"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with subtle border -->
+  <rect width="512" height="512" rx="112" fill="url(#velvetBg)"/>
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#2A221B" stroke-width="4"/>
+  <!-- Ambient atmospheric glow -->
+  <circle cx="256" cy="256" r="220" fill="url(#cinemaGlow)"/>
+  <!-- Projector Reel & Lens -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#amberGold)" stroke-width="12" stroke-dasharray="24 12"/>
+  <circle cx="256" cy="256" r="100" fill="#140F0C" stroke="#FF9F1C" stroke-width="4" stroke-opacity="0.5"/>
+  <!-- Screen Beam & Play Wedge -->
+  <polygon points="230,196 326,256 230,316" fill="url(#amberGold)"/>
+  <!-- Film Sprocket Accents -->
+  <circle cx="256" cy="116" r="14" fill="#FF9F1C"/>
+  <circle cx="396" cy="256" r="14" fill="#FF9F1C"/>
+  <circle cx="256" cy="396" r="14" fill="#FF9F1C"/>
+  <circle cx="116" cy="256" r="14" fill="#FF9F1C"/>
+</svg>

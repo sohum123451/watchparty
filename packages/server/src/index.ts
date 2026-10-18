@@ -3,10 +3,12 @@ import postgres from "postgres";
 import {
   MOVIE_CATALOGUE,
   FREE_FILMS,
+  YOUTUBE_FULL_MOVIES,
   MovieSearchEngine,
   computeRoomRecommendations,
   WS_CLOSE_CODES,
 } from "@watchparty/shared";
+import { getClientIp } from "./utils/ip.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { WebSocketGateway } from "./gateway/WebSocketGateway.js";
 import {
@@ -15,6 +17,7 @@ import {
   ConsoleMailer,
   handleAuthRoute,
 } from "./auth/index.js";
+import { TokenSecurity } from "./auth/crypto/tokens.js";
 import {
   FriendsService,
   MemoryFriendsRepository,
@@ -222,8 +225,6 @@ const server = http.createServer(async (req, res) => {
     const statusCode = dbHealthy ? 200 : 503;
     res.writeHead(statusCode, {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
       "Cache-Control": "no-cache, no-store, must-revalidate",
     });
     if (req.method === "HEAD") {
@@ -250,7 +251,7 @@ const server = http.createServer(async (req, res) => {
         wsEndpoint: publicWs,
         protocol: req.headers["x-forwarded-proto"] || "http",
         host: host || "localhost",
-        clientIp: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress,
+        clientIp: getClientIp(req),
         timestamp: Date.now(),
       })
     );
@@ -539,6 +540,145 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // WebRTC STUN/TURN ICE Servers endpoint (symmetric NAT & mobile CGNAT traversal)
+  if (url.pathname === "/api/rtc/ice-servers" && req.method === "GET") {
+    const turnUrls = (process.env.TURN_URLS || "").split(",").map((u) => u.trim()).filter(Boolean);
+    const turnUsername = process.env.TURN_USERNAME || "";
+    const turnCredential = process.env.TURN_CREDENTIAL || "";
+
+    const iceServers: any[] = [
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+    ];
+
+    if (turnUrls.length > 0) {
+      iceServers.push({
+        urls: turnUrls,
+        username: turnUsername,
+        credential: turnCredential,
+      });
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ iceServers }));
+    return;
+  }
+
+  // In-app Search for YouTube and Free Movie Catalogue
+  if (url.pathname === "/api/search" && req.method === "GET") {
+    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
+    const provider = (url.searchParams.get("provider") || "all").toLowerCase();
+
+    const results: any[] = [];
+
+    if (provider === "catalogue" || provider === "all") {
+      const matchedFilms = FREE_FILMS.filter((f) =>
+        !q || f.title.toLowerCase().includes(q) || (f.genre && f.genre.toLowerCase().includes(q))
+      ).map((f) => ({
+        id: f.id,
+        title: f.title,
+        channel: "Cinema Vault",
+        durationMs: (f.runtime || 90) * 60 * 1000,
+        thumbnail: f.posterUrl,
+        sourceUrl: f.videoUrl,
+        provider: "html5",
+      }));
+      results.push(...matchedFilms);
+    }
+
+    if (provider === "youtube" || provider === "all") {
+      const matchedYt = YOUTUBE_FULL_MOVIES.filter((y) =>
+        !q || y.title.toLowerCase().includes(q) || (y.attribution && y.attribution.toLowerCase().includes(q))
+      ).map((y) => {
+        const ytId = (y as any).youtubeId || (y.videoUrl?.includes("v=") ? y.videoUrl.split("v=")[1]?.split("&")[0] : y.id);
+        return {
+          id: y.id,
+          youtubeId: ytId,
+          title: y.title,
+          channel: y.attribution || y.director || "Studio Archive",
+          durationMs: (y.runtime || 100) * 60 * 1000,
+          thumbnail: y.posterUrl,
+          sourceUrl: y.videoUrl || `https://www.youtube.com/watch?v=${ytId}`,
+          provider: "youtube",
+        };
+      });
+      results.push(...matchedYt);
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ count: results.length, results }));
+    return;
+  }
+
+  // Web Push VAPID Public Key
+  if (url.pathname === "/api/notifications/vapid-public-key" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ publicKey: webPushService.getPublicKey() }));
+    return;
+  }
+
+  // Web Push Subscription
+  if (url.pathname === "/api/notifications/subscribe" && req.method === "POST") {
+    try {
+      const rawBody: string = await new Promise((resolve) => {
+        let b = "";
+        req.on("data", (chunk) => { b += chunk.toString(); });
+        req.on("end", () => resolve(b));
+      });
+      const body = rawBody ? JSON.parse(rawBody) : {};
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+      let userSub = "anonymous";
+      if (token) {
+        try {
+          const verified = await TokenSecurity.verifyAccessToken(token);
+          if (verified?.sub) userSub = verified.sub;
+        } catch {}
+      }
+      const userId = body.userId || userSub;
+      if (body.subscription) {
+        webPushService.subscribe(userId, body.subscription);
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err: any) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err?.message || "Failed to subscribe" }));
+    }
+    return;
+  }
+
+  // Room Screening Invite Push & Social Loop
+  if (url.pathname.startsWith("/api/rooms/") && url.pathname.endsWith("/invite") && req.method === "POST") {
+    try {
+      const parts = url.pathname.split("/");
+      const roomCode = parts[3];
+      const rawBody: string = await new Promise((resolve) => {
+        let b = "";
+        req.on("data", (chunk) => { b += chunk.toString(); });
+        req.on("end", () => resolve(b));
+      });
+      const body = rawBody ? JSON.parse(rawBody) : {};
+      const targetFriendId = body.friendUserId || body.targetUserId;
+      const inviterName = body.inviterName || "A friend";
+      const movieTitle = body.movieTitle || "a screening";
+
+      if (targetFriendId) {
+        await webPushService.sendNotification(targetFriendId, "partyInvite", {
+          title: "WatchParty Screening Invitation",
+          body: `${inviterName} invited you to watch ${movieTitle} in Room #${roomCode} — Tap to Join`,
+          url: `/join/${roomCode}`,
+          data: { roomCode },
+        });
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, message: `Ticket slipped under door for ${targetFriendId}` }));
+    } catch (err: any) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err?.message || "Failed to send invitation" }));
+    }
+    return;
+  }
 
   // Catalogue endpoint (free films for lobby and source picker)
   if (url.pathname === "/api/catalogue" && req.method === "GET") {
@@ -642,10 +782,7 @@ const server = http.createServer(async (req, res) => {
 
   // 13. Source Resolver Service API (/api/resolve)
   if (url.pathname === "/api/resolve" && (req.method === "POST" || req.method === "GET")) {
-    const clientIp =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket.remoteAddress ||
-      "anonymous";
+    const clientIp = getClientIp(req);
     if (!sourceResolver.checkRateLimit(clientIp)) {
       res.writeHead(429, { "Content-Type": "application/json" });
       res.end(

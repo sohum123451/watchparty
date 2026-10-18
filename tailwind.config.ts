@@ -3,8 +3,10 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   darkMode: 'class',
   content: [
-    './packages/**/*.{html,ts,tsx,js,jsx}',
-    './src/**/*.{html,ts,tsx,js,jsx}',
+    './packages/web/src/**/*.{html,ts,tsx,js,jsx}',
+    './packages/client/src/**/*.{html,ts,tsx,js,jsx}',
+    './packages/extension/src/**/*.{html,ts,tsx,js,jsx}',
+    './packages/shared/src/**/*.{html,ts,tsx,js,jsx}',
   ],
   theme: {
     extend: {
@@ -21,8 +23,15 @@ const config: Config = {
           muted: '#A89B8C',
           dark: '#675C51',
         },
+        // Top-level aliases so `text-muted` and `text-muted-dark` resolve properly
+        muted: {
+          DEFAULT: '#A89B8C',
+          dark: '#675C51',
+        },
         accent: {
           DEFAULT: '#FF9F1C',
+          hover: '#FFAE38',
+          active: '#E6880C',
           glow: 'rgba(255, 159, 28, 0.22)',
         },
         'accent-2': {
@@ -38,10 +47,16 @@ const config: Config = {
           glow: 'rgba(214, 40, 57, 0.32)',
         },
         border: {
+          DEFAULT: 'rgba(243, 233, 220, 0.16)',
           subtle: 'rgba(243, 233, 220, 0.08)',
           brass: 'rgba(243, 233, 220, 0.16)',
           'brass-bright': 'rgba(255, 159, 28, 0.45)',
           marquee: 'rgba(228, 87, 46, 0.4)',
+        },
+        brass: {
+          DEFAULT: 'rgba(243, 233, 220, 0.16)',
+          subtle: 'rgba(243, 233, 220, 0.08)',
+          bright: 'rgba(255, 159, 28, 0.45)',
         },
       },
       fontFamily: {

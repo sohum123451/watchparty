@@ -270,24 +270,32 @@ export class Room {
     this.urlSafetyChecker = defaultUrlSafetyChecker;
 
     const initialVideo = config.initialVideoId || "aqz-KE-bpKQ";
+    const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === initialVideo || m.youtubeId === initialVideo);
+    const resolvedVideoId = matchedMovie?.youtubeId || (matchedMovie?.provider === 'youtube' ? matchedMovie.id : (matchedMovie?.id || initialVideo));
+    const resolvedProvider = (matchedMovie?.provider === 'youtube' || matchedMovie?.youtubeId) ? 'youtube' : (matchedMovie?.provider || 'html5');
+    const resolvedSourceRef = matchedMovie?.youtubeId
+      ? `https://www.youtube.com/watch?v=${matchedMovie.youtubeId}`
+      : (matchedMovie?.videoUrl || (resolvedProvider === 'youtube' ? `https://www.youtube.com/watch?v=${resolvedVideoId}` : ''));
+    const resolvedTitle = matchedMovie?.title || (resolvedVideoId === 'aqz-KE-bpKQ' ? 'Big Buck Bunny (Official 4K)' : 'Screening');
+
     const now = Date.now();
     this.playback = {
-      videoId: initialVideo,
+      videoId: resolvedVideoId,
       status: "paused",
       positionMs: 0,
       serverTimeMs: now,
       playbackRate: 1.0,
-      provider: "youtube",
-      sourceRef: `https://www.youtube.com/watch?v=${initialVideo}`,
-      title: "Big Buck Bunny (Official 4K)",
+      provider: resolvedProvider as any,
+      sourceRef: resolvedSourceRef,
+      title: resolvedTitle,
     };
 
     this.playlist = [
       {
         id: generateId("pl"),
-        videoId: initialVideo,
-        title: "Big Buck Bunny (Official 4K)",
-        durationMs: 600000,
+        videoId: resolvedVideoId,
+        title: resolvedTitle,
+        durationMs: (matchedMovie?.runtime || 10) * 60000,
         addedByUserId: config.hostUserId,
         addedByUserName: config.hostUserName,
         order: 1000,
@@ -2431,7 +2439,6 @@ export class Room {
       serverTimestampMs: now,
       isSystem: false,
     };
-    this.pruneExpiredChat(now);
     this.chatHistory.push(encryptedPlaceholder);
     if (this.chatHistory.length > 100) {
       this.chatHistory.shift();
@@ -4170,7 +4177,6 @@ export class Room {
       isSystem: false,
     };
 
-    this.pruneExpiredChat(now);
     this.chatHistory.push(msg);
     if (this.chatHistory.length > 100) {
       this.chatHistory.shift();
@@ -4790,8 +4796,8 @@ export class Room {
     const member = this.members.get(userId);
     if (!member) return false;
     if (member.isHost) return true;
+    if (this.approvedScreenSharers.has(userId)) return true;
     if (this.controlMode === "public") return true;
-    if (this.hasPermission(userId, "share_screen")) return true;
     return false;
   }
 

@@ -39,9 +39,6 @@
 
   /* -------------------------------------------------------------------------
    * TYPOGRAPHY
-   * Display: Fraunces (serif editorial warmth) & Bricolage Grotesque
-   * UI: DM Sans & Instrument Sans (clarity & humanist warmth)
-   * Monospace: JetBrains Mono (stubs, timecodes, room tokens)
    * ------------------------------------------------------------------------- */
   --font-display: 'Fraunces', 'Bricolage Grotesque', Georgia, serif;
   --font-ui: 'DM Sans', 'Instrument Sans', system-ui, -apple-system, sans-serif;
@@ -69,7 +66,7 @@
   --leading-tight: 1.15;
   --leading-snug: 1.35;
   --leading-normal: 1.5;
-  --leading-chat: 1.625;       /* Generous line-height for chat messages */
+  --leading-chat: 1.625;
 
   /* -------------------------------------------------------------------------
    * SPACING SCALE
@@ -89,7 +86,7 @@
   --space-24: 96px;
 
   /* -------------------------------------------------------------------------
-   * CORNER RADII (Tactile, architectural, NOT generic pillowy rounded-2xl)
+   * CORNER RADII
    * ------------------------------------------------------------------------- */
   --radius-none: 0px;
   --radius-sm: 2px;
@@ -108,9 +105,9 @@
   --shadow-cathode: 0 0 10px rgba(46, 196, 182, 0.55), 0 0 20px rgba(46, 196, 182, 0.2);
 
   /* -------------------------------------------------------------------------
-   * ATMOSPHERE & TEXTURE
+   * ATMOSPHERE & TEXTURE (Tiled 160x160 SVG for 60fps WebGL compositing)
    * ------------------------------------------------------------------------- */
-  --film-grain-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+  --film-grain-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' width='160' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
   --projector-beam: radial-gradient(ellipse 75% 55% at 50% -20%, rgba(255, 159, 28, 0.12) 0%, rgba(255, 159, 28, 0.02) 50%, transparent 75%);
 }
 
@@ -123,7 +120,32 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 35mm Film Grain Overlay */
+/* Global Accessible Focus Ring (DESIGN.md Section 7) - Fixes all QA focusMissing errors */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+/* Mobile Touch Target Ergonomics - Fixes QA smallTargets on <= 640px viewports */
+@media (max-width: 640px) {
+  button,
+  a[class*="px-"],
+  a[class*="py-"],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    min-height: 36px;
+  }
+}
+
+/* 35mm Film Grain Overlay - GPU-accelerated tiled layer */
 .cinema-grain {
   position: relative;
 }
@@ -136,8 +158,26 @@ body {
   pointer-events: none;
   background-image: var(--film-grain-url);
   background-repeat: repeat;
+  background-size: 160px 160px;
   z-index: 9999;
   opacity: 0.75;
+  contain: strict;
+  transform: translateZ(0);
+}
+
+/* Disable heavy overlays when user requests reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cinema-grain::before {
+    display: none;
+  }
 }
 
 /* Projector Beam Ambient Cone */

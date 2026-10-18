@@ -8,31 +8,24 @@ export async function GET(
 ) {
   const { code } = await params;
   const roomCode = decodeURIComponent(code).toUpperCase().trim();
-  const backendUrl = process.env.API_BACKEND_URL || 'https://watchparty-server-2zjh.onrender.com';
+  const rawBackend = process.env.API_BACKEND_URL;
+  const backendUrl =
+    rawBackend && !rawBackend.includes('pinggy') && !rawBackend.includes('localhost')
+      ? rawBackend
+      : 'https://watchparty-server-2zjh.onrender.com';
 
-  if (backendUrl) {
-    try {
-      const res = await fetch(`${backendUrl}/api/rooms/${encodeURIComponent(roomCode)}`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data);
-      }
-    } catch {
-      // Fallback
+  try {
+    const res = await fetch(`${backendUrl}/api/rooms/${encodeURIComponent(roomCode)}`, {
+      signal: AbortSignal.timeout(12000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json(data);
     }
-  }
+    if (res.status === 404) {
+      return NextResponse.json({ exists: false, error: 'Room not found' }, { status: 404 });
+    }
+  } catch {}
 
-  // Graceful fallback for any valid-looking room code
-  return NextResponse.json({
-    exists: true,
-    roomId: `room_${roomCode.toLowerCase()}`,
-    roomCode,
-    roomName: `Auditorium ${roomCode}`,
-    controlMode: 'collaborative',
-    memberCount: 1,
-    hostUserName: 'Projectionist',
-    mediaTitle: 'Public Domain Cinema Classic',
-  });
+  return NextResponse.json({ exists: false, error: 'Room not found' }, { status: 404 });
 }

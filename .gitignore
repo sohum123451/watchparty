@@ -6,12 +6,14 @@ package-lock.json.bak
 dist/
 build/
 .next/
+out/
 *.tsbuildinfo
 
-# Environment & Secrets (NEVER commit secrets!)
-.env
-.env.local
-.env.*.local
+# Environment & Secrets (NEVER commit secrets, but DO allow .example templates!)
+.env*
+!.env.example
+!.env.production.example
+!packages/*/.env.example
 *.pem
 *.key
 
@@ -35,11 +37,23 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Testing & Coverage
+# Testing, QA & Benchmark Artifacts
 coverage/
 playwright-report/
 test-results/
 .nyc_output/
+qa_screenshots/
+qa_report.json
+bench-results.json
+bench-results.md
+bench/results/
+
+# Local deployment scratch files
+ssm-*.json
+watchparty-deploy.tar.gz
+*.id_ed25519*
+id_ed25519*
+.vercel/
 
 # OS & Editor files
 .DS_Store
@@ -48,13 +62,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
-# Local deployment scratch files
-ssm-*.json
-watchparty-deploy.tar.gz
-*.id_ed25519*
-id_ed25519*
-
-
-.vercel
-.env*
