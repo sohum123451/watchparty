@@ -376,14 +376,31 @@ export class WebSocketGateway {
     // 6. Room Join (New or Reconnect)
     if (message.type === "ROOM_JOIN") {
       const { roomCode, userName, password, inviteToken, reconnectToken, lastKnownVersion, e2eePublicKey } = message.payload;
-      const room = this.roomManager.getRoomByCode(roomCode);
+      let room = this.roomManager.getRoomByCode(roomCode);
 
       if (!room) {
-        conn.sendError(
-          ERROR_CODES.ROOM_NOT_FOUND,
-          `Room with code '${roomCode}' not found`,
-          message.clientSeq
-        );
+        // Auto-create room on demand so direct links, refreshed rooms, or custom codes always work seamlessly!
+        const effectiveName = conn.authUser?.displayName || userName || "Host";
+        const targetCode = (roomCode || "CINEMA").toUpperCase().trim();
+        const { room: newRoom, hostUserId, hostSessionToken } = this.roomManager.createRoom({
+          hostUserName: effectiveName,
+          hostAccountId: conn.authUser?.id,
+          roomName: `${targetCode} Screening Suite`,
+          roomCode: targetCode,
+          initialVideoId: "YE7VzlLtp-4",
+          controlMode: "public",
+        });
+
+        conn.roomId = newRoom.roomId;
+        conn.userId = hostUserId;
+        newRoom.attachConnection(hostUserId, conn);
+
+        conn.sendAck(message.clientSeq, newRoom.version);
+        conn.send({
+          type: "ROOM_SNAPSHOT",
+          version: newRoom.version,
+          payload: newRoom.getSnapshot(hostUserId, hostSessionToken),
+        });
         return;
       }
 

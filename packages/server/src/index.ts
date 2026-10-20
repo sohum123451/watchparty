@@ -449,11 +449,16 @@ const server = http.createServer(async (req, res) => {
     }
 
     const code = subpath;
-    const room = roomManager.getRoomByCode(code);
+    let room = roomManager.getRoomByCode(code);
     if (!room) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ exists: false, error: "Room not found" }));
-      return;
+      const created = roomManager.createRoom({
+        hostUserName: "Host",
+        roomName: `${code.toUpperCase().trim()} Screening Suite`,
+        roomCode: code.toUpperCase().trim(),
+        initialVideoId: "YE7VzlLtp-4",
+        controlMode: "public",
+      });
+      room = created.room;
     }
     const host = room.getMember(room.hostId);
     res.writeHead(200, { "Content-Type": "application/json" });
