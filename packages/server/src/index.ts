@@ -1027,6 +1027,35 @@ async function bootstrap() {
     logger.info(`Restored ${restored} active rooms from durable snapshots`);
   }
 
+  // Pre-seed curated public community broadcast suites so lobby cards work out of the box
+  if (!roomManager.getRoomByCode("KUNG-FURY")) {
+    roomManager.createRoom({
+      hostUserName: "CinemaHost",
+      roomName: "Kung Fury (Full HD) 24/7 Screening",
+      roomCode: "KUNG-FURY",
+      initialVideoId: "bS5P_LAqiVg",
+    });
+    logger.info("[Startup] Seeded community suite: KUNG-FURY");
+  }
+  if (!roomManager.getRoomByCode("LOFI-CAFE")) {
+    roomManager.createRoom({
+      hostUserName: "AcousticDJ",
+      roomName: "Lo-Fi Chill Beats & Cinema Atmosphere",
+      roomCode: "LOFI-CAFE",
+      initialVideoId: "jfKfPfyJRdk",
+    });
+    logger.info("[Startup] Seeded community suite: LOFI-CAFE");
+  }
+  if (!roomManager.getRoomByCode("SINTEL-4K")) {
+    roomManager.createRoom({
+      hostUserName: "Projectionist",
+      roomName: "Sintel 4K Blender Master Print",
+      roomCode: "SINTEL-4K",
+      initialVideoId: "eRsGyueVLvQ",
+    });
+    logger.info("[Startup] Seeded community suite: SINTEL-4K");
+  }
+
   server.listen(PORT, HOST, () => {
     logger.info(`[WatchParty Server] Running on ${BASE_URL} (Bound to ${HOST}:${PORT})`, {
       nodeId: NODE_ID,

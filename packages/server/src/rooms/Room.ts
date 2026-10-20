@@ -269,14 +269,14 @@ export class Room {
     this.sourceReports = new Map();
     this.urlSafetyChecker = defaultUrlSafetyChecker;
 
-    const initialVideo = config.initialVideoId || "aqz-KE-bpKQ";
+    const initialVideo = config.initialVideoId || "YE7VzlLtp-4";
     const matchedMovie = MOVIE_CATALOGUE.find((m) => m.id === initialVideo || m.youtubeId === initialVideo);
     const resolvedVideoId = matchedMovie?.youtubeId || (matchedMovie?.provider === 'youtube' ? matchedMovie.id : (matchedMovie?.id || initialVideo));
     const resolvedProvider = (matchedMovie?.provider === 'youtube' || matchedMovie?.youtubeId) ? 'youtube' : (matchedMovie?.provider || 'html5');
     const resolvedSourceRef = matchedMovie?.youtubeId
       ? `https://www.youtube.com/watch?v=${matchedMovie.youtubeId}`
       : (matchedMovie?.videoUrl || (resolvedProvider === 'youtube' ? `https://www.youtube.com/watch?v=${resolvedVideoId}` : ''));
-    const resolvedTitle = matchedMovie?.title || (resolvedVideoId === 'aqz-KE-bpKQ' ? 'Big Buck Bunny (Official 4K)' : 'Screening');
+    const resolvedTitle = matchedMovie?.title || (resolvedVideoId === 'YE7VzlLtp-4' ? 'Big Buck Bunny (Official 4K)' : 'Screening');
 
     const now = Date.now();
     this.playback = {

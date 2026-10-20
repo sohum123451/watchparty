@@ -42,6 +42,8 @@ import {
 import { useWakeLock } from '@/lib/useWakeLock';
 import { useMediaSession } from '@/lib/useMediaSession';
 import { isExtensionAvailable, launchOrSyncExternalStream } from '@/lib/platformBridge';
+import { TheatreEnvironment } from './TheatreEnvironment';
+import { TheatreMember3D } from './TheatreScene3D';
 
 export interface TheatreAuditoriumProps {
   roomCode: string;
@@ -69,10 +71,15 @@ function getMemberPalette(userId?: string) {
 
 function extractYouTubeId(urlOrId: string): string | null {
   if (!urlOrId) return null;
+  let raw: string | null = null;
   const match = urlOrId.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
-  if (match) return match[1];
-  if (/^[\w-]{11}$/.test(urlOrId) && !urlOrId.includes('.') && !urlOrId.startsWith('room_') && !urlOrId.startsWith('user_') && !urlOrId.startsWith('stream_')) return urlOrId;
-  return null;
+  if (match) raw = match[1];
+  else if (/^[\w-]{11}$/.test(urlOrId) && !urlOrId.includes('.') && !urlOrId.startsWith('room_') && !urlOrId.startsWith('user_') && !urlOrId.startsWith('stream_')) {
+    raw = urlOrId;
+  }
+  if (!raw) return null;
+  if (raw === 'aqz-KE-bpKQ') return 'YE7VzlLtp-4';
+  return raw;
 }
 
 const ICE_SERVERS: RTCConfiguration = {
@@ -99,6 +106,18 @@ export function TheatreAuditorium({
     }
   }, [user, authLoading, roomCode, router]);
 
+  // ── Client mount state & hydration safety ──────────────────────────────────
+  const [mounted, setMounted] = useState(false);
+  const [clientOrigin, setClientOrigin] = useState('');
+  const [show3DTheatre, setShow3DTheatre] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined') {
+      setClientOrigin(encodeURIComponent(window.location.origin));
+    }
+  }, []);
+
   // ── Auth / identity ────────────────────────────────────────────────────────
   const [selfUserId, setSelfUserId] = useState('');
   const selfUserIdRef = useRef('');
@@ -109,6 +128,26 @@ export function TheatreAuditorium({
 
   // Resolve username
   const userName = user?.displayName || (typeof window !== 'undefined' ? localStorage.getItem('watchparty_username') || `Patron-${Math.floor(100 + Math.random() * 900)}` : 'Patron');
+
+  // Map room participants into 3D Auditorium members
+  const theatreMembers3D: TheatreMember3D[] = useMemo(() => {
+    const list = members.length > 0 ? members : [
+      {
+        userId: selfUserId || 'self',
+        userName: userName || 'Host',
+        isHost: true,
+      } as MemberPublicInfo,
+    ];
+
+    return list.map((m, idx) => ({
+      id: m.userId,
+      name: m.userName,
+      avatar: m.avatar || m.userName.slice(0, 2).toUpperCase(),
+      seatRow: Math.floor(idx / 6) % 4,
+      seatCol: idx % 6,
+      isSpeaking: Boolean(speakingMap[m.userId]),
+    }));
+  }, [members, selfUserId, userName, speakingMap]);
 
   const authToken =
     typeof window !== 'undefined'
@@ -123,7 +162,7 @@ export function TheatreAuditorium({
   const sendRef = useRef<(msg: any) => void>(() => {});
   const [provider, setProvider] = useState<string>('youtube');
   const providerRef = useRef<string>('youtube');
-  const [youtubeId, setYoutubeId] = useState<string | null>('aqz-KE-bpKQ');
+  const [youtubeId, setYoutubeId] = useState<string | null>('YE7VzlLtp-4');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const isScreenSharingRef = useRef(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -132,7 +171,7 @@ export function TheatreAuditorium({
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
-  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
+  const [videoSrc, setVideoSrc] = useState('https://www.youtube.com/watch?v=YE7VzlLtp-4');
   const [videoTitle, setVideoTitle] = useState('Big Buck Bunny (Official 4K)');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -196,7 +235,7 @@ export function TheatreAuditorium({
       return;
     }
 
-    handleApplyQuickYouTube(`https://www.youtube.com/watch?v=aqz-KE-bpKQ`);
+    handleApplyQuickYouTube(`https://www.youtube.com/watch?v=YE7VzlLtp-4`);
     setInRoomSearchQuery('');
   };
 
@@ -380,10 +419,10 @@ export function TheatreAuditorium({
           let srcRef = snap.playback.sourceRef;
           let title = snap.playback.title;
 
-          if (vid === 'big_buck_bunny' || !vid) {
-            vid = 'aqz-KE-bpKQ';
+          if (vid === 'big_buck_bunny' || !vid || vid === 'aqz-KE-bpKQ') {
+            vid = 'YE7VzlLtp-4';
             prov = 'youtube';
-            srcRef = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+            srcRef = 'https://www.youtube.com/watch?v=YE7VzlLtp-4';
             title = 'Big Buck Bunny (Official 4K)';
           }
 
@@ -442,10 +481,10 @@ export function TheatreAuditorium({
           let srcRef = pb.sourceRef;
           let title = pb.title;
 
-          if (vid === 'big_buck_bunny' || !vid) {
-            vid = 'aqz-KE-bpKQ';
+          if (vid === 'big_buck_bunny' || !vid || vid === 'aqz-KE-bpKQ') {
+            vid = 'YE7VzlLtp-4';
             prov = 'youtube';
-            srcRef = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+            srcRef = 'https://www.youtube.com/watch?v=YE7VzlLtp-4';
             title = 'Big Buck Bunny (Official 4K)';
           }
 
@@ -1381,10 +1420,11 @@ export function TheatreAuditorium({
             ) : provider === 'youtube' && youtubeId ? (
               <iframe
                 id="yt-player-frame"
-                src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1${typeof window !== 'undefined' ? `&origin=${encodeURIComponent(window.location.origin)}` : ''}`}
+                src={`https://www.youtube.com/embed/${youtubeId === 'aqz-KE-bpKQ' ? 'YE7VzlLtp-4' : youtubeId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1${clientOrigin ? `&origin=${clientOrigin}` : ''}`}
                 title={videoTitle || 'YouTube Video'}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                suppressHydrationWarning
                 onLoad={() => {
                   if (isMutedRef.current) {
                     sendYouTubeCommand('mute');
@@ -1613,6 +1653,18 @@ export function TheatreAuditorium({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setShow3DTheatre((prev) => !prev)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    show3DTheatre
+                      ? 'bg-[#FF9F1C]/20 border-[#FF9F1C] text-[#FF9F1C]'
+                      : 'bg-[#261E19] hover:bg-[#342821] border-[#3A2E26] text-[#A89B8C] hover:text-[#F3E9DC]'
+                  }`}
+                  title="Toggle 3D Cinema Auditorium with Three.js"
+                >
+                  <span>🍿 {show3DTheatre ? 'Hide 3D' : '3D Cinema'}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowSourcePicker(true)}
                   className="px-3 py-1.5 rounded-lg bg-[#261E19] hover:bg-[#342821] border border-[#3A2E26] text-xs font-mono text-[#A89B8C] hover:text-[#F3E9DC] flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
@@ -1620,6 +1672,33 @@ export function TheatreAuditorium({
                 </button>
               </div>
             </div>
+
+            {/* 3D THEATRE AUDITORIUM (Three.js WebGL) - PROMOTED ABOVE SHELF */}
+            {show3DTheatre && (
+              <div className="bg-[#140F0C] border border-[#2A211B] rounded-xl overflow-hidden shadow-2xl relative transition-all">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2A211B] bg-[#1A1512]/80 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF9F1C] shadow-[0_0_8px_rgba(255,159,28,0.6)] animate-pulse" />
+                    <span className="text-xs font-mono font-bold text-[#F3E9DC] uppercase tracking-wider">
+                      3D Cinema Auditorium &bull; Velvet Balcony
+                    </span>
+                    <span className="text-[10px] font-mono text-[#2EC4B6] bg-[#2EC4B6]/10 px-2 py-0.5 rounded border border-[#2EC4B6]/20">
+                      Three.js WebGL &bull; 60 FPS
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShow3DTheatre(false)}
+                    className="text-[11px] font-mono text-[#A89B8C] hover:text-[#FF9F1C] cursor-pointer bg-transparent border-none px-2 py-1 transition-colors"
+                  >
+                    ✕ Minimize 3D
+                  </button>
+                </div>
+                <div className="w-full h-[360px] sm:h-[420px] relative">
+                  <TheatreEnvironment members={theatreMembers3D} />
+                </div>
+              </div>
+            )}
 
             {/* QUICK FEATURE SHELF (Instant 1-Click Sync For Room) */}
             <div className="bg-[#140F0C] border border-[#2A211B] rounded-xl p-4">
